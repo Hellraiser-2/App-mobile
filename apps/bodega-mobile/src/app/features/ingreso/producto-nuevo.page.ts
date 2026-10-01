@@ -4,15 +4,11 @@ import {
   IonButton,
   IonButtons,
   IonCard,
-  IonCardContent,
-  IonCardHeader,
-  IonCardTitle,
   IonContent,
   IonHeader,
+  IonIcon,
   IonInput,
   IonItem,
-  IonLabel,
-  IonList,
   IonSegment,
   IonSegmentButton,
   IonText,
@@ -21,6 +17,8 @@ import {
   NavController,
 } from '@ionic/angular';
 import type { Categoria, Ubicacion, VarianteStock } from '@rockstar/contracts';
+import { addIcons } from 'ionicons';
+import { cameraOutline, checkmark } from 'ionicons/icons';
 import { Observable, firstValueFrom, forkJoin } from 'rxjs';
 
 import { EnvioIdempotente } from '../../core/api/envio-idempotente';
@@ -51,15 +49,11 @@ const mismoNombre = (a: string, b: string) => a.trim().localeCompare(b.trim(), '
     IonButton,
     IonButtons,
     IonCard,
-    IonCardContent,
-    IonCardHeader,
-    IonCardTitle,
     IonContent,
     IonHeader,
+    IonIcon,
     IonInput,
     IonItem,
-    IonLabel,
-    IonList,
     IonSegment,
     IonSegmentButton,
     IonText,
@@ -77,54 +71,54 @@ const mismoNombre = (a: string, b: string) => a.trim().localeCompare(b.trim(), '
     </ion-header>
     <ion-content>
       @if (creada(); as variante) {
-        <ion-card>
-          <ion-card-header>
-            <ion-card-title>Producto creado</ion-card-title>
-          </ion-card-header>
-          <ion-card-content>
-            <div class="resumen">
-              <app-imagen-prenda
-                [url]="variante.imagenUrl"
-                [alt]="'Foto de ' + variante.producto"
-                style="--tamano: 96px"
-              ></app-imagen-prenda>
-              <div>
-                <p class="nombre">{{ variante.producto }}</p>
-                <p>
-                  {{ variante.categoria }}
-                  @if (variante.banda) {
-                    · {{ variante.banda }}
-                  }
-                </p>
-                <p>Talla {{ variante.talla }} · {{ variante.color }}</p>
+        <ion-card class="creado">
+          <div class="logro">
+            <span aria-hidden="true"><ion-icon name="checkmark"></ion-icon></span>
+            <h2>Producto creado</h2>
+          </div>
+          <div class="resumen">
+            <app-imagen-prenda
+              [url]="variante.imagenUrl"
+              [alt]="'Foto de ' + variante.producto"
+              style="--tamano: 92px"
+            ></app-imagen-prenda>
+            <div>
+              <p class="nombre">{{ variante.producto }}</p>
+              <div class="rs-chips">
+                <span class="rs-chip">{{ variante.categoria }}</span>
+                @if (variante.banda) {
+                  <span class="rs-chip">{{ variante.banda }}</span>
+                }
+                <span class="rs-chip">Talla {{ variante.talla }}</span>
+                <span class="rs-chip">{{ variante.color }}</span>
               </div>
             </div>
-            <dl class="codigos">
-              <div>
-                <dt>SKU</dt>
-                <dd>{{ variante.sku }}</dd>
-              </div>
-              <div>
-                <dt>Código de ubicación</dt>
-                <dd>{{ variante.codigoUbicacion }}</dd>
-              </div>
-              <div>
-                <dt>Código de barras</dt>
-                <dd>{{ variante.codigo }}</dd>
-              </div>
-              <div>
-                <dt>Cantidad ingresada</dt>
-                <dd>{{ resumenIngreso(variante) }}</dd>
-              </div>
-            </dl>
-          </ion-card-content>
+          </div>
+          <dl class="rs-datos codigos">
+            <div>
+              <dt>SKU</dt>
+              <dd>{{ variante.sku }}</dd>
+            </div>
+            <div class="rs-destacado">
+              <dt>Código de ubicación</dt>
+              <dd>{{ variante.codigoUbicacion }}</dd>
+            </div>
+            <div>
+              <dt>Código de barras</dt>
+              <dd>{{ variante.codigo }}</dd>
+            </div>
+            <div>
+              <dt>Cantidad ingresada</dt>
+              <dd>{{ resumenIngreso(variante) }}</dd>
+            </div>
+          </dl>
         </ion-card>
-        <div class="ion-padding">
+        <div class="rs-acciones">
           <ion-button expand="block" (click)="otro()">Crear otro producto</ion-button>
           <ion-button expand="block" fill="outline" (click)="volver()">Volver al ingreso</ion-button>
         </div>
       } @else {
-        <ion-list>
+        <div class="rs-grupo">
           <ion-item>
             <ion-input
               label="Nombre"
@@ -135,61 +129,59 @@ const mismoNombre = (a: string, b: string) => a.trim().localeCompare(b.trim(), '
               (ionInput)="nombre.set(valor($event))"
             ></ion-input>
           </ion-item>
-        </ion-list>
-        <app-selector-con-nuevo
-          etiqueta="Categoría"
-          textoNueva="Agregar categoría nueva…"
-          etiquetaNueva="Nombre de la categoría nueva"
-          [opciones]="nombresDeCategorias()"
-          [deshabilitado]="bloqueado()"
-          [valor]="categoria()"
-          (valorChange)="cambiarCategoria($event)"
-          (nueva)="agregarCategoria($event)"
-        ></app-selector-con-nuevo>
-        @if (avisoCatalogo(); as aviso) {
-          <p class="ion-padding-horizontal" role="status">{{ aviso }}</p>
-        }
-        @if (categoria().trim() === '') {
-          <p class="ion-padding-horizontal ayuda">Elige la categoría para ver sus tallas y los demás datos.</p>
-        } @else {
-          @if (usaBanda()) {
+          <app-selector-con-nuevo
+            etiqueta="Categoría"
+            textoNueva="Agregar categoría nueva…"
+            etiquetaNueva="Nombre de la categoría nueva"
+            [opciones]="nombresDeCategorias()"
+            [deshabilitado]="bloqueado()"
+            [valor]="categoria()"
+            (valorChange)="cambiarCategoria($event)"
+            (nueva)="agregarCategoria($event)"
+          ></app-selector-con-nuevo>
+          @if (avisoCatalogo(); as aviso) {
+            <p role="status">{{ aviso }}</p>
+          }
+          @if (categoria().trim() === '') {
+            <p class="rs-ayuda ayuda">Elige la categoría para ver sus tallas y los demás datos.</p>
+          } @else {
+            @if (usaBanda()) {
+              <app-selector-con-nuevo
+                etiqueta="Banda"
+                opcionVacia="Sin banda"
+                textoNueva="Agregar banda nueva…"
+                etiquetaNueva="Nombre de la banda nueva"
+                [opciones]="bandas()"
+                [deshabilitado]="bloqueado()"
+                [(valor)]="banda"
+                (nueva)="agregarBanda($event)"
+              ></app-selector-con-nuevo>
+              @if (avisoBanda(); as aviso) {
+                <p role="status">{{ aviso }}</p>
+              }
+            }
             <app-selector-con-nuevo
-              etiqueta="Banda"
-              opcionVacia="Sin banda"
-              textoNueva="Agregar banda nueva…"
-              etiquetaNueva="Nombre de la banda nueva"
-              [opciones]="bandas()"
+              etiqueta="Talla"
+              textoNueva="Agregar talla nueva…"
+              etiquetaNueva="Talla nueva"
+              [opciones]="tallas()"
               [deshabilitado]="bloqueado()"
-              [(valor)]="banda"
-              (nueva)="agregarBanda($event)"
+              [(valor)]="talla"
             ></app-selector-con-nuevo>
-            @if (avisoBanda(); as aviso) {
-              <p class="ion-padding-horizontal" role="status">{{ aviso }}</p>
+            <app-selector-con-nuevo
+              etiqueta="Color"
+              textoNueva="Agregar color nuevo…"
+              etiquetaNueva="Nombre del color nuevo"
+              [opciones]="colores()"
+              [deshabilitado]="bloqueado()"
+              [(valor)]="color"
+              (nueva)="agregarColor($event)"
+            ></app-selector-con-nuevo>
+            @if (avisoColor(); as aviso) {
+              <p role="status">{{ aviso }}</p>
             }
           }
-          <app-selector-con-nuevo
-            etiqueta="Talla"
-            textoNueva="Agregar talla nueva…"
-            etiquetaNueva="Talla nueva"
-            [opciones]="tallas()"
-            [deshabilitado]="bloqueado()"
-            [(valor)]="talla"
-          ></app-selector-con-nuevo>
-          <app-selector-con-nuevo
-            etiqueta="Color"
-            textoNueva="Agregar color nuevo…"
-            etiquetaNueva="Nombre del color nuevo"
-            [opciones]="colores()"
-            [deshabilitado]="bloqueado()"
-            [(valor)]="color"
-            (nueva)="agregarColor($event)"
-          ></app-selector-con-nuevo>
-          @if (avisoColor(); as aviso) {
-            <p class="ion-padding-horizontal" role="status">{{ aviso }}</p>
-          }
-        }
-        <ion-list>
-          <ion-item>
+          <ion-item lines="none">
             <ion-input
               label="Cantidad"
               labelPlacement="stacked"
@@ -202,21 +194,22 @@ const mismoNombre = (a: string, b: string) => a.trim().localeCompare(b.trim(), '
               (ionInput)="cantidad.set(valor($event))"
             ></ion-input>
           </ion-item>
-          <ion-item lines="none">
-            <ion-label>Ingresa en</ion-label>
-          </ion-item>
-        </ion-list>
+        </div>
+
+        <h2 class="rs-seccion">Ingresa en</h2>
         <ion-segment [value]="ubicacion()" [disabled]="bloqueado()" (ionChange)="ubicacion.set($any(valor($event)))">
           @for (opcion of ubicaciones; track opcion.valor) {
             <ion-segment-button [value]="opcion.valor">{{ opcion.etiqueta }}</ion-segment-button>
           }
         </ion-segment>
 
-        <div class="foto ion-padding">
-          <app-imagen-prenda [url]="imagen()" alt="Foto del producto" style="--tamano: 96px"></app-imagen-prenda>
+        <h2 class="rs-seccion">Foto</h2>
+        <div class="foto rs-grupo">
+          <app-imagen-prenda [url]="imagen()" alt="Foto del producto" style="--tamano: 92px"></app-imagen-prenda>
           <div>
             <input #archivo type="file" accept="image/*" hidden (change)="elegirImagen($event)" />
             <ion-button fill="outline" [disabled]="bloqueado()" (click)="archivo.click()">
+              <ion-icon slot="start" name="camera-outline" aria-hidden="true"></ion-icon>
               {{ imagen() ? 'Cambiar foto' : 'Elegir foto' }}
             </ion-button>
             @if (errorImagen(); as mensaje) {
@@ -239,7 +232,7 @@ const mismoNombre = (a: string, b: string) => a.trim().localeCompare(b.trim(), '
         <app-estado-envio [envio]="envio" (reintentar)="guardar()"></app-estado-envio>
 
         @if (!envio.reintentable()) {
-          <div class="ion-padding">
+          <div class="rs-acciones">
             <ion-button expand="block" [disabled]="envio.enviando()" (click)="guardar()">
               {{ envio.enviando() ? 'Creando…' : 'Crear producto' }}
             </ion-button>
@@ -250,29 +243,52 @@ const mismoNombre = (a: string, b: string) => a.trim().localeCompare(b.trim(), '
   `,
   styles: `
     .foto,
-    .resumen {
+    .resumen,
+    .logro {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 14px;
+    }
+    .foto {
+      padding: 14px;
+    }
+    .creado {
+      padding: 18px 16px 16px;
+    }
+    .logro span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(61, 220, 151, 0.16);
+      color: var(--ion-color-success);
+      font-size: 24px;
+    }
+    .logro h2,
+    .nombre {
+      font-family: var(--rs-fuente-titulo);
+      font-weight: 600;
+    }
+    .logro h2 {
+      font-size: 1.4rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .resumen {
+      margin: 16px 0;
     }
     .nombre {
-      font-size: 1.1rem;
-      font-weight: 600;
+      margin: 0 0 8px;
+      font-size: 1.35rem;
+      line-height: 1.15;
     }
     .codigos {
-      display: grid;
-      gap: 12px;
-      margin: 16px 0 0;
+      grid-template-columns: 1fr;
     }
-    dt {
-      font-size: 0.8rem;
-      opacity: 0.7;
-    }
-    dd {
-      margin: 0;
-      font-size: 1.4rem;
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
+    .codigos dd {
+      font-size: 1.35rem;
     }
   `,
 })
@@ -351,6 +367,10 @@ export class ProductoNuevoPage {
   protected resumenIngreso(variante: VarianteStock): string {
     const ingreso = variante.existencias.find((existencia) => existencia.cantidad > 0);
     return ingreso ? `${ingreso.cantidad} unidades en ${etiquetaUbicacion(ingreso.ubicacion)}` : 'Sin unidades';
+  }
+
+  constructor() {
+    addIcons({ cameraOutline, checkmark });
   }
 
   /** Ionic lo llama al entrar a la pantalla; trae las sugerencias de los campos. */

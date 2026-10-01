@@ -19,9 +19,9 @@ import { Component, computed, input, signal } from '@angular/core';
       flex: none;
       width: var(--tamano, 64px);
       height: var(--tamano, 64px);
-      border-radius: 8px;
+      border-radius: 14px;
       overflow: hidden;
-      background: #e9e6e1;
+      background: var(--rs-superficie-alta, #202027);
     }
     img {
       display: block;
@@ -35,8 +35,12 @@ import { Component, computed, input, signal } from '@angular/core';
       justify-content: center;
       width: 100%;
       height: 100%;
-      color: #6b6b6b;
+      border: 1px dashed var(--rs-borde-fuerte, rgba(255, 255, 255, 0.16));
+      border-radius: inherit;
+      box-sizing: border-box;
+      color: var(--rs-tenue, #a09ea8);
       font-size: 0.7rem;
+      font-weight: 600;
       text-align: center;
     }
   `,

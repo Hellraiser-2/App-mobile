@@ -5,12 +5,9 @@ import {
   IonButton,
   IonButtons,
   IonCard,
-  IonCardContent,
-  IonCardHeader,
-  IonCardSubtitle,
-  IonCardTitle,
   IonContent,
   IonHeader,
+  IonIcon,
   IonSegment,
   IonSegmentButton,
   IonText,
@@ -18,6 +15,8 @@ import {
   IonToolbar,
 } from '@ionic/angular';
 import type { Pedido } from '@rockstar/contracts';
+import { addIcons } from 'ionicons';
+import { cubeOutline, locationOutline, timeOutline } from 'ionicons/icons';
 import { firstValueFrom } from 'rxjs';
 
 import { mensajeDeError } from '../../core/api/errores';
@@ -41,12 +40,9 @@ import { LogisticaApi } from './logistica.api';
     IonButton,
     IonButtons,
     IonCard,
-    IonCardContent,
-    IonCardHeader,
-    IonCardSubtitle,
-    IonCardTitle,
     IonContent,
     IonHeader,
+    IonIcon,
     IonSegment,
     IonSegmentButton,
     IonText,
@@ -73,7 +69,7 @@ import { LogisticaApi } from './logistica.api';
     </ion-header>
     <ion-content>
       @if (error(); as mensaje) {
-        <div class="ion-padding">
+        <div class="rs-acciones">
           <ion-text color="danger">
             <p role="alert">{{ mensaje }}</p>
           </ion-text>
@@ -81,45 +77,121 @@ import { LogisticaApi } from './logistica.api';
         </div>
       }
       @for (pedido of visibles(); track pedido.idPedido) {
-        <ion-card>
-          <ion-card-header>
-            <ion-card-subtitle>
-              Pedido #{{ pedido.idPedido }}
-              <ion-badge [color]="colorDe(pedido)">{{ etiquetaDeEstado(pedido.estado) }}</ion-badge>
+        <ion-card class="pedido" [class.urgente]="urgente(pedido)">
+          <div class="cabecera">
+            <span class="numero">Pedido #{{ pedido.idPedido }}</span>
+            <span class="estados">
               @if (urgente(pedido)) {
                 <ion-badge color="danger">Urgente</ion-badge>
               }
-            </ion-card-subtitle>
-            <ion-card-title>{{ pedido.destinatario }}</ion-card-title>
-          </ion-card-header>
-          <ion-card-content>
-            <p>{{ pedido.direccion }}, {{ pedido.comuna }}, {{ pedido.region }}</p>
-            <ul>
-              @for (linea of pedido.lineas; track linea.idVariante) {
-                <li>{{ linea.cantidad }} × {{ linea.producto }} · {{ linea.talla }} · {{ linea.color }} ({{ linea.sku }})</li>
-              }
-            </ul>
-            <p>{{ momento(pedido) }}</p>
-            @if (pedido.trackingStarken) {
-              <p>Seguimiento Starken: {{ pedido.trackingStarken }}</p>
+              <ion-badge [color]="colorDe(pedido)">{{ etiquetaDeEstado(pedido.estado) }}</ion-badge>
+            </span>
+          </div>
+          <h2>{{ pedido.destinatario }}</h2>
+          <p class="dato">
+            <ion-icon name="location-outline" aria-hidden="true"></ion-icon>
+            <span>{{ pedido.direccion }}, {{ pedido.comuna }}, {{ pedido.region }}</span>
+          </p>
+          <ul>
+            @for (linea of pedido.lineas; track linea.idVariante) {
+              <li>
+                <strong>{{ linea.cantidad }}×</strong>
+                <span>
+                  {{ linea.producto }} · {{ linea.talla }} · {{ linea.color }}
+                  <small>{{ linea.sku }}</small>
+                </span>
+              </li>
             }
-          </ion-card-content>
+          </ul>
+          <p class="dato">
+            <ion-icon name="time-outline" aria-hidden="true"></ion-icon>
+            <span>{{ momento(pedido) }}</span>
+          </p>
+          @if (pedido.trackingStarken) {
+            <p class="dato">
+              <ion-icon name="cube-outline" aria-hidden="true"></ion-icon>
+              <span>
+                Seguimiento Starken
+                <span class="rs-codigo">{{ pedido.trackingStarken }}</span>
+              </span>
+            </p>
+          }
         </ion-card>
       } @empty {
         @if (!error()) {
-          <p class="ion-padding" role="status">{{ cargando() ? 'Cargando envíos…' : 'No hay envíos en este estado.' }}</p>
+          <p role="status">{{ cargando() ? 'Cargando envíos…' : 'No hay envíos en este estado.' }}</p>
         }
       }
     </ion-content>
   `,
   styles: `
-    ion-badge {
-      margin-inline-start: 6px;
-      vertical-align: middle;
+    .pedido {
+      padding: 16px;
+    }
+    .urgente {
+      border-color: rgba(255, 92, 92, 0.4);
+    }
+    .cabecera,
+    .estados,
+    .dato {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cabecera {
+      justify-content: space-between;
+    }
+    .numero {
+      color: var(--rs-tenue);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    h2 {
+      margin: 8px 0 6px;
+      font-family: var(--rs-fuente-titulo);
+      font-size: 1.45rem;
+      font-weight: 600;
+      line-height: 1.15;
+    }
+    .dato {
+      align-items: flex-start;
+      margin: 6px 0 0;
+      color: var(--rs-tenue);
+      font-size: 0.88rem;
+      line-height: 1.4;
+    }
+    .dato ion-icon {
+      flex: none;
+      margin-top: 1px;
+      color: var(--ion-color-primary);
+      font-size: 17px;
     }
     ul {
-      margin: 8px 0;
-      padding-inline-start: 20px;
+      margin: 12px 0;
+      padding: 4px 12px;
+      border-radius: var(--rs-radio-chico);
+      background: var(--rs-superficie-alta);
+      list-style: none;
+    }
+    li {
+      display: flex;
+      gap: 10px;
+      padding: 8px 0;
+      font-size: 0.92rem;
+      line-height: 1.35;
+    }
+    li + li {
+      border-top: 1px solid var(--rs-borde);
+    }
+    li strong {
+      min-width: 26px;
+      color: var(--ion-color-primary);
+    }
+    small {
+      display: block;
+      color: var(--rs-tenue);
     }
   `,
 })
@@ -139,6 +211,10 @@ export class EnviosPage {
   protected readonly valor = valorDeEvento;
   protected readonly urgente = (pedido: Pedido) => esUrgente(pedido);
   protected readonly momento = (pedido: Pedido) => momentoDelPedido(pedido);
+
+  constructor() {
+    addIcons({ cubeOutline, locationOutline, timeOutline });
+  }
 
   /** Ionic lo llama cada vez que se entra a la pantalla, de modo que los envíos estén al día. */
   ionViewWillEnter(): void {

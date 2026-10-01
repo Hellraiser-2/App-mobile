@@ -1,6 +1,8 @@
 import { Component, inject, input, output, signal } from '@angular/core';
-import { IonButton, IonItem, IonLabel, IonList, IonNote, IonSearchbar, IonText } from '@ionic/angular';
+import { IonButton, IonIcon, IonItem, IonLabel, IonList, IonNote, IonSearchbar, IonText } from '@ionic/angular';
 import type { VarianteStock } from '@rockstar/contracts';
+import { addIcons } from 'ionicons';
+import { scanOutline } from 'ionicons/icons';
 import { firstValueFrom } from 'rxjs';
 
 import { codigoDeError, mensajeDeError } from '../../core/api/errores';
@@ -15,14 +17,19 @@ import { EscanerService } from './escaner.service';
  */
 @Component({
   selector: 'app-buscador-variante',
-  imports: [ImagenPrendaComponent, IonButton, IonItem, IonLabel, IonList, IonNote, IonSearchbar, IonText],
+  imports: [ImagenPrendaComponent, IonButton, IonIcon, IonItem, IonLabel, IonList, IonNote, IonSearchbar, IonText],
   template: `
     @if (conEscaner()) {
-      <ion-button expand="block" [disabled]="ocupado()" (click)="escanear()">Escanear código</ion-button>
+      <div class="rs-acciones">
+        <ion-button expand="block" [disabled]="ocupado()" (click)="escanear()">
+          <ion-icon slot="start" name="scan-outline" aria-hidden="true"></ion-icon>
+          Escanear código
+        </ion-button>
+      </div>
     }
     @if (aviso(); as mensaje) {
       <ion-text color="warning">
-        <p class="aviso" role="status">{{ mensaje }}</p>
+        <p role="status">{{ mensaje }}</p>
       </ion-text>
     }
     <ion-searchbar
@@ -40,17 +47,20 @@ import { EscanerService } from './escaner.service';
               <h3>{{ nombre(variante) }}</h3>
               <p>{{ variante.sku }}</p>
             </ion-label>
-            <ion-note slot="end">{{ variante.disponible }} disp.</ion-note>
+            <ion-note slot="end" class="disponible">
+              <strong>{{ variante.disponible }}</strong> disp.
+            </ion-note>
           </ion-item>
         }
       </ion-list>
     } @else if (sinResultados()) {
-      <p class="aviso">No se encontraron productos.</p>
+      <p class="rs-ayuda">No se encontraron productos.</p>
     }
   `,
   styles: `
-    .aviso {
-      padding: 0 16px;
+    .disponible strong {
+      color: var(--ion-color-primary);
+      font-size: 1.05rem;
     }
   `,
 })
@@ -70,6 +80,10 @@ export class BuscadorVarianteComponent {
 
   protected readonly nombre = nombreVariante;
   protected readonly valor = valorDeEvento;
+
+  constructor() {
+    addIcons({ scanOutline });
+  }
 
   async escanear(): Promise<void> {
     this.aviso.set(null);

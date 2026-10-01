@@ -5,9 +5,9 @@ import {
   IonButtons,
   IonContent,
   IonHeader,
+  IonIcon,
   IonInput,
   IonItem,
-  IonLabel,
   IonList,
   IonSegment,
   IonSegmentButton,
@@ -17,6 +17,8 @@ import {
   IonToolbar,
 } from '@ionic/angular';
 import type { Ubicacion, VarianteStock } from '@rockstar/contracts';
+import { addIcons } from 'ionicons';
+import { arrowForward } from 'ionicons/icons';
 
 import { EnvioIdempotente } from '../../core/api/envio-idempotente';
 import { AvisosService } from '../../shared/avisos.service';
@@ -44,9 +46,9 @@ import { InventarioApi } from '../inventario/inventario.api';
     IonButtons,
     IonContent,
     IonHeader,
+    IonIcon,
     IonInput,
     IonItem,
-    IonLabel,
     IonList,
     IonSegment,
     IonSegmentButton,
@@ -71,18 +73,17 @@ import { InventarioApi } from '../inventario/inventario.api';
       @if (variante(); as seleccionada) {
         <app-ficha-variante [variante]="seleccionada"></app-ficha-variante>
 
+        <h2 class="rs-seccion">Desde</h2>
+        <ion-segment [value]="origen()" [disabled]="bloqueado()" (ionChange)="origen.set($any(valor($event)))">
+          @for (opcion of ubicaciones; track opcion.valor) {
+            <ion-segment-button [value]="opcion.valor">{{ opcion.etiqueta }}</ion-segment-button>
+          }
+        </ion-segment>
+        <p class="hacia">
+          <ion-icon name="arrow-forward" aria-hidden="true"></ion-icon>
+          Hacia <strong>{{ etiquetaUbicacion(destino()) }}</strong>
+        </p>
         <ion-list>
-          <ion-item lines="none">
-            <ion-label>Desde</ion-label>
-          </ion-item>
-          <ion-segment [value]="origen()" [disabled]="bloqueado()" (ionChange)="origen.set($any(valor($event)))">
-            @for (opcion of ubicaciones; track opcion.valor) {
-              <ion-segment-button [value]="opcion.valor">{{ opcion.etiqueta }}</ion-segment-button>
-            }
-          </ion-segment>
-          <ion-item>
-            <ion-label>Hacia: {{ etiquetaUbicacion(destino()) }}</ion-label>
-          </ion-item>
           <ion-item>
             <ion-input
               label="Cantidad"
@@ -118,7 +119,7 @@ import { InventarioApi } from '../inventario/inventario.api';
         <app-estado-envio [envio]="envio" (reintentar)="confirmar()"></app-estado-envio>
 
         @if (!envio.reintentable()) {
-          <div class="ion-padding">
+          <div class="rs-acciones">
             <ion-button expand="block" [disabled]="envio.enviando()" (click)="confirmar()">
               {{ envio.enviando() ? 'Registrando…' : 'Registrar traspaso' }}
             </ion-button>
@@ -126,6 +127,22 @@ import { InventarioApi } from '../inventario/inventario.api';
         }
       }
     </ion-content>
+  `,
+  styles: `
+    .hacia {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 20px 0;
+      color: var(--rs-tenue);
+    }
+    .hacia ion-icon {
+      color: var(--ion-color-primary);
+      font-size: 20px;
+    }
+    .hacia strong {
+      color: var(--rs-texto);
+    }
   `,
 })
 export class TraspasoPage {
@@ -141,6 +158,10 @@ export class TraspasoPage {
   readonly mostrarErrores = signal(false);
 
   readonly bloqueado = computed(() => this.envio.enviando() || this.envio.reintentable());
+
+  constructor() {
+    addIcons({ arrowForward });
+  }
 
   readonly errores = computed(() => {
     const variante = this.variante();

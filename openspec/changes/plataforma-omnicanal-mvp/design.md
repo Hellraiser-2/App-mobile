@@ -347,6 +347,18 @@ La app de bodega se construyó antes que los servicios de Usuarios e Inventario.
 - Bandas, categorías y colores como catálogos propios: `GET` y `POST /inventario/bandas`, `/inventario/categorias` y `/inventario/colores` (Gerente, Bodega) permiten registrar un nombre sin crear un producto. Responden la lista completa en orden alfabético, y registrar un nombre que ya existe conserva el existente. Los filtros y el formulario de producto leen estas listas, de modo que una banda sin prendas también aparece.
 - Código de ubicación: `B-<zona>-<posición>`, donde la zona son tres letras de la categoría y la posición es correlativa dentro de ella (por ejemplo `B-POL-04`). Es por producto, de modo que todas sus tallas y colores comparten ubicación. El formato es una propuesta del backend simulado y debe ajustarse a cómo está organizada la bodega real.
 
+### 13.2. El backend arranca como un solo servicio, con una imagen Docker por pieza
+
+El primer backend real es una única aplicación NestJS (`services/api`) con los dominios de Usuarios, Inventario y Logística como módulos, en lugar del gateway y los cinco servicios de las decisiones 1 a 3. El sistema se entrega en tres contenedores: `app` (la app de bodega servida por nginx), `api` y `db` (PostgreSQL), definidos en `docker-compose.yml`.
+
+- Por qué: el encargo pidió un backend en su propio contenedor para la app que ya existe. Seis aplicaciones para servir a un solo cliente multiplican la configuración sin que haya todavía llamadas entre servicios que la justifiquen.
+- Lo que se conserva del diseño: las rutas públicas son las mismas (`/api/v1/usuarios/...`, `/inventario/...`, `/logistica/...`), de modo que separar los módulos en servicios no cambia a los clientes. Se mantienen un esquema de PostgreSQL por dominio (decisión 4), la transacción con bloqueo de existencias (decisión 6), el JWT RS256 con token de refresco revocable y Argon2id (decisión 8), el formato de error y la matriz de permisos.
+- Lo que cambia: el acceso a datos usa SQL explícito con `pg` en lugar de Prisma, y las migraciones son archivos `.sql` en `db/migrations` que el servicio aplica al arrancar. Hay un solo usuario de base de datos, no uno por servicio. El módulo de Logística lee las líneas del pedido directamente de los esquemas `ventas` e `inventario`; al separarse en servicios deberá pedirlas por API.
+- Idempotencia: la clave de cada operación se guarda en `inventario.operaciones` y los movimientos la referencian. La decisión 5 pedía la clave única en `movimientos`, pero un ingreso de varias prendas registra varios movimientos con una misma clave.
+- Categorías: `inventario.categorias` guarda si la categoría usa banda, su zona de bodega y la última posición entregada, y `inventario.categorias_tallas` las tallas que admite, en orden.
+- Pendiente respecto del diseño: el límite de solicitudes por IP, los endpoints de Usuarios distintos de la sesión, y los módulos de Ventas y Pagos. El esquema `ventas` existe solo con las tablas que necesita un pedido.
+- La app usa la API real en la imagen Docker (configuración `docker` de Angular, con `apiUrl: '/api/v1'` y sin el backend simulado en el paquete). El resto de las compilaciones sigue con el backend simulado mientras no haya una dirección pública de la API.
+
 ### 14. Cálculo de los indicadores
 
 Cada servicio expone un reporte interno de sus propios datos y el gateway los compone.

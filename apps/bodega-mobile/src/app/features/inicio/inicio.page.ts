@@ -4,16 +4,9 @@ import {
   IonButton,
   IonButtons,
   IonCard,
-  IonCardContent,
-  IonCardHeader,
-  IonCardSubtitle,
-  IonCardTitle,
   IonContent,
   IonHeader,
   IonIcon,
-  IonItem,
-  IonLabel,
-  IonList,
   IonRouterLink,
   IonTitle,
   IonToolbar,
@@ -21,6 +14,7 @@ import {
 import type { Pedido } from '@rockstar/contracts';
 import { addIcons } from 'ionicons';
 import {
+  chevronForward,
   clipboardOutline,
   downloadOutline,
   logOutOutline,
@@ -41,6 +35,8 @@ interface Opcion {
   titulo: string;
   detalle: string;
   icono: string;
+  /** Color del icono, como componentes RGB, para distinguir cada operación de un vistazo. */
+  tono: string;
 }
 
 @Component({
@@ -49,16 +45,9 @@ interface Opcion {
     IonButton,
     IonButtons,
     IonCard,
-    IonCardContent,
-    IonCardHeader,
-    IonCardSubtitle,
-    IonCardTitle,
     IonContent,
     IonHeader,
     IonIcon,
-    IonItem,
-    IonLabel,
-    IonList,
     IonRouterLink,
     IonTitle,
     IonToolbar,
@@ -67,7 +56,7 @@ interface Opcion {
   template: `
     <ion-header>
       <ion-toolbar>
-        <ion-title>Bodega</ion-title>
+        <ion-title>Rockstar</ion-title>
         <ion-buttons slot="end">
           <ion-button aria-label="Cerrar sesión" (click)="cerrarSesion()">
             <ion-icon slot="icon-only" name="log-out-outline"></ion-icon>
@@ -76,57 +65,140 @@ interface Opcion {
       </ion-toolbar>
     </ion-header>
     <ion-content>
-      <p class="ion-padding-horizontal">Hola, {{ sesion.usuario()?.nombre }}</p>
-      <ion-list>
-        @for (opcion of opciones; track opcion.ruta) {
-          <ion-item [routerLink]="opcion.ruta" detail>
-            <ion-icon slot="start" [name]="opcion.icono" aria-hidden="true"></ion-icon>
-            <ion-label>
-              <h2>{{ opcion.titulo }}</h2>
-              <p>{{ opcion.detalle }}</p>
-            </ion-label>
-          </ion-item>
+      <section class="saludo">
+        <p>Hola,</p>
+        <h1>{{ sesion.usuario()?.nombre }}</h1>
+        @if (sesion.usuario()?.rol; as rol) {
+          <span class="rs-chip rs-chip--acento">{{ rol }}</span>
         }
-      </ion-list>
+      </section>
 
-      <ion-card button routerLink="/envios">
-        <ion-card-header>
-          <ion-card-title>Envíos</ion-card-title>
-          <ion-card-subtitle>Pedidos del e-commerce</ion-card-subtitle>
-        </ion-card-header>
-        <ion-card-content>
-          @if (errorEnvios(); as mensaje) {
-            <p role="alert">{{ mensaje }}</p>
-          } @else {
-            <dl class="envios">
-              @for (grupo of resumenEnvios(); track grupo.etiqueta) {
-                <div>
-                  <dd>{{ grupo.cantidad ?? '–' }}</dd>
-                  <dt>{{ grupo.etiqueta }}</dt>
-                </div>
-              }
-            </dl>
-          }
-        </ion-card-content>
+      <ion-card button routerLink="/envios" class="envios">
+        <div class="envios-cabecera">
+          <div>
+            <h2>Envíos</h2>
+            <p>Pedidos del e-commerce</p>
+          </div>
+          <ion-icon name="chevron-forward" aria-hidden="true"></ion-icon>
+        </div>
+        @if (errorEnvios(); as mensaje) {
+          <p role="alert">{{ mensaje }}</p>
+        } @else {
+          <dl>
+            @for (grupo of resumenEnvios(); track grupo.etiqueta) {
+              <div>
+                <dd>{{ grupo.cantidad ?? '–' }}</dd>
+                <dt>{{ grupo.etiqueta }}</dt>
+              </div>
+            }
+          </dl>
+        }
       </ion-card>
+
+      <h2 class="rs-seccion">Operaciones</h2>
+      <div class="operaciones">
+        @for (opcion of opciones; track opcion.ruta) {
+          <ion-card button class="operacion" [routerLink]="opcion.ruta" [style.--tono]="opcion.tono">
+            <span class="icono"><ion-icon [name]="opcion.icono" aria-hidden="true"></ion-icon></span>
+            <h3>{{ opcion.titulo }}</h3>
+            <p>{{ opcion.detalle }}</p>
+          </ion-card>
+        }
+      </div>
     </ion-content>
   `,
   styles: `
+    .saludo {
+      padding: 8px 20px 4px;
+    }
+    .saludo p {
+      margin: 0;
+      color: var(--rs-tenue);
+    }
+    .saludo h1 {
+      margin: 2px 0 10px;
+      font-family: var(--rs-fuente-titulo);
+      font-size: 2.1rem;
+      font-weight: 600;
+      line-height: 1.1;
+    }
     .envios {
+      padding: 18px;
+      border-color: rgba(255, 194, 46, 0.28);
+      background: linear-gradient(140deg, rgba(255, 194, 46, 0.16), rgba(255, 194, 46, 0.02) 55%), var(--rs-superficie);
+      text-align: start;
+    }
+    .envios-cabecera {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .envios-cabecera ion-icon {
+      color: var(--ion-color-primary);
+      font-size: 22px;
+    }
+    h2:not(.rs-seccion) {
+      font-family: var(--rs-fuente-titulo);
+      font-size: 1.4rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .envios-cabecera p,
+    .operacion p {
+      margin: 2px 0 0;
+      color: var(--rs-tenue);
+      font-size: 0.85rem;
+      line-height: 1.35;
+    }
+    dl {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 8px;
-      margin: 0;
-      text-align: center;
+      margin: 16px 0 0;
     }
     dd {
       margin: 0;
-      font-size: 1.8rem;
+      font-family: var(--rs-fuente-titulo);
+      font-size: 2.4rem;
       font-weight: 600;
+      line-height: 1;
+    }
+    dl > div:first-child dd {
+      color: var(--ion-color-primary);
     }
     dt {
-      font-size: 0.85rem;
-      opacity: 0.8;
+      margin-top: 4px;
+      color: var(--rs-tenue);
+      font-size: 0.8rem;
+    }
+    .operaciones {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      padding: 12px 16px 28px;
+    }
+    .operacion {
+      margin: 0;
+      padding: 16px;
+      text-align: start;
+    }
+    .icono {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 46px;
+      height: 46px;
+      margin-bottom: 14px;
+      border-radius: 14px;
+      background: rgba(var(--tono), 0.14);
+      color: rgb(var(--tono));
+      font-size: 24px;
+    }
+    h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.25;
     }
   `,
 })
@@ -136,12 +208,48 @@ export class InicioPage {
   private readonly logistica = inject(LogisticaApi);
 
   protected readonly opciones: Opcion[] = [
-    { ruta: '/consulta', titulo: 'Consultar producto', detalle: 'Existencias por ubicación', icono: 'qr-code-outline' },
-    { ruta: '/ingreso', titulo: 'Ingreso de mercadería', detalle: 'Recibir prendas', icono: 'download-outline' },
-    { ruta: '/merma', titulo: 'Registrar merma', detalle: 'Dañado, muestra o cambio', icono: 'trash-outline' },
-    { ruta: '/traspaso', titulo: 'Traspaso', detalle: 'Entre bodega y sala de ventas', icono: 'swap-horizontal-outline' },
-    { ruta: '/conteo', titulo: 'Conteo', detalle: 'Ajuste por conteo físico', icono: 'clipboard-outline' },
-    { ruta: '/busqueda', titulo: 'Buscar prenda', detalle: 'Ubicar una prenda y medir el tiempo', icono: 'timer-outline' },
+    {
+      ruta: '/consulta',
+      titulo: 'Consultar producto',
+      detalle: 'Existencias por ubicación',
+      icono: 'qr-code-outline',
+      tono: '255, 194, 46',
+    },
+    {
+      ruta: '/ingreso',
+      titulo: 'Ingreso de mercadería',
+      detalle: 'Recibir prendas',
+      icono: 'download-outline',
+      tono: '61, 220, 151',
+    },
+    {
+      ruta: '/merma',
+      titulo: 'Registrar merma',
+      detalle: 'Dañado, muestra o cambio',
+      icono: 'trash-outline',
+      tono: '255, 92, 92',
+    },
+    {
+      ruta: '/traspaso',
+      titulo: 'Traspaso',
+      detalle: 'Entre bodega y sala de ventas',
+      icono: 'swap-horizontal-outline',
+      tono: '76, 201, 240',
+    },
+    {
+      ruta: '/conteo',
+      titulo: 'Conteo',
+      detalle: 'Ajuste por conteo físico',
+      icono: 'clipboard-outline',
+      tono: '139, 123, 255',
+    },
+    {
+      ruta: '/busqueda',
+      titulo: 'Buscar prenda',
+      detalle: 'Ubicar una prenda y medir el tiempo',
+      icono: 'timer-outline',
+      tono: '255, 159, 67',
+    },
   ];
 
   /** `null` mientras los pedidos aún no se han cargado. */
@@ -157,6 +265,7 @@ export class InicioPage {
 
   constructor() {
     addIcons({
+      chevronForward,
       clipboardOutline,
       downloadOutline,
       logOutOutline,

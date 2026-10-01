@@ -5,3 +5,5 @@ www/
 coverage/
 .env
 *.log
+# Par de claves con que el backend firma los tokens; se genera al arrancar.
+claves/

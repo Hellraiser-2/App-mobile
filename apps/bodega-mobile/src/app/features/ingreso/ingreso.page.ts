@@ -6,6 +6,7 @@ import {
   IonButtons,
   IonContent,
   IonHeader,
+  IonIcon,
   IonInput,
   IonItem,
   IonLabel,
@@ -18,6 +19,8 @@ import {
   IonToolbar,
 } from '@ionic/angular';
 import type { Ubicacion, VarianteStock } from '@rockstar/contracts';
+import { addIcons } from 'ionicons';
+import { add, closeCircleOutline } from 'ionicons/icons';
 
 import { EnvioIdempotente } from '../../core/api/envio-idempotente';
 import { AvisosService } from '../../shared/avisos.service';
@@ -43,6 +46,7 @@ interface LineaIngreso {
     IonButtons,
     IonContent,
     IonHeader,
+    IonIcon,
     IonInput,
     IonItem,
     IonLabel,
@@ -73,16 +77,20 @@ interface LineaIngreso {
 
       @if (!bloqueado()) {
         <app-buscador-variante (seleccionada)="agregar($event)"></app-buscador-variante>
-        <ion-button expand="block" fill="outline" routerLink="/ingreso/producto-nuevo">
-          Ingresar producto nuevo
-        </ion-button>
+        <div class="rs-acciones">
+          <ion-button expand="block" fill="outline" routerLink="/ingreso/producto-nuevo">
+            <ion-icon slot="start" name="add" aria-hidden="true"></ion-icon>
+            Ingresar producto nuevo
+          </ion-button>
+        </div>
       }
       @if (aviso(); as mensaje) {
         <ion-text color="warning">
-          <p class="ion-padding-horizontal" role="status">{{ mensaje }}</p>
+          <p role="status">{{ mensaje }}</p>
         </ion-text>
       }
 
+      <h2 class="rs-seccion">Prendas recibidas</h2>
       <ion-list>
         @for (linea of lineas(); track linea.variante.idVariante) {
           <ion-item>
@@ -105,13 +113,20 @@ interface LineaIngreso {
               [class.ion-touched]="cantidadInvalida(linea)"
               (ionInput)="cambiarCantidad(linea.variante.idVariante, valor($event))"
             ></ion-input>
-            <ion-button slot="end" fill="clear" color="danger" [disabled]="bloqueado()" (click)="quitar(linea.variante.idVariante)">
-              Quitar
+            <ion-button
+              slot="end"
+              fill="clear"
+              color="danger"
+              [attr.aria-label]="'Quitar ' + nombre(linea.variante)"
+              [disabled]="bloqueado()"
+              (click)="quitar(linea.variante.idVariante)"
+            >
+              <ion-icon slot="icon-only" name="close-circle-outline"></ion-icon>
             </ion-button>
           </ion-item>
         } @empty {
           <ion-item>
-            <ion-label>Escanea o busca las prendas recibidas.</ion-label>
+            <ion-label class="vacio">Escanea o busca las prendas recibidas.</ion-label>
           </ion-item>
         }
         <ion-item>
@@ -127,13 +142,13 @@ interface LineaIngreso {
 
       @if (hayCantidadesInvalidas()) {
         <ion-text color="danger">
-          <p class="ion-padding-horizontal" role="alert">Las cantidades deben ser enteros mayores que cero.</p>
+          <p role="alert">Las cantidades deben ser enteros mayores que cero.</p>
         </ion-text>
       }
       <app-estado-envio [envio]="envio" (reintentar)="confirmar()"></app-estado-envio>
 
       @if (!envio.reintentable()) {
-        <div class="ion-padding">
+        <div class="rs-acciones">
           <ion-button expand="block" [disabled]="!puedeConfirmar()" (click)="confirmar()">
             {{ envio.enviando() ? 'Registrando…' : 'Registrar ingreso en ' + etiquetaUbicacion(ubicacion()) }}
           </ion-button>
@@ -144,6 +159,9 @@ interface LineaIngreso {
   styles: `
     .cantidad {
       max-width: 88px;
+    }
+    .vacio {
+      color: var(--rs-tenue);
     }
   `,
 })
@@ -168,6 +186,10 @@ export class IngresoPage {
   protected readonly nombre = nombreVariante;
   protected readonly valor = valorDeEvento;
   protected readonly etiquetaUbicacion = etiquetaUbicacion;
+
+  constructor() {
+    addIcons({ add, closeCircleOutline });
+  }
 
   /** Agrega la variante al ingreso, o suma una unidad si ya estaba. */
   agregar(variante: VarianteStock): void {

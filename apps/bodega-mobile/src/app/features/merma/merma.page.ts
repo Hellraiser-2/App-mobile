@@ -66,6 +66,7 @@ import { InventarioApi } from '../inventario/inventario.api';
       @if (variante(); as seleccionada) {
         <app-ficha-variante [variante]="seleccionada"></app-ficha-variante>
 
+        <h2 class="rs-seccion">Sale de</h2>
         <ion-segment [value]="ubicacion()" [disabled]="bloqueado()" (ionChange)="ubicacion.set($any(valor($event)))">
           @for (opcion of ubicaciones; track opcion.valor) {
             <ion-segment-button [value]="opcion.valor">{{ opcion.etiqueta }}</ion-segment-button>
@@ -122,7 +123,7 @@ import { InventarioApi } from '../inventario/inventario.api';
         <app-estado-envio [envio]="envio" (reintentar)="confirmar()"></app-estado-envio>
 
         @if (!envio.reintentable()) {
-          <div class="ion-padding">
+          <div class="rs-acciones">
             <ion-button expand="block" color="danger" [disabled]="envio.enviando()" (click)="confirmar()">
               {{ envio.enviando() ? 'Registrando…' : 'Registrar merma' }}
             </ion-button>

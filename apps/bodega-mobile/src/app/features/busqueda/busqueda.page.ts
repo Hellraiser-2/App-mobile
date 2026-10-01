@@ -5,9 +5,6 @@ import {
   IonButton,
   IonButtons,
   IonCard,
-  IonCardHeader,
-  IonCardSubtitle,
-  IonCardTitle,
   IonContent,
   IonHeader,
   IonInput,
@@ -74,9 +71,6 @@ function unidadesDe(variante: VarianteStock): number {
     IonButton,
     IonButtons,
     IonCard,
-    IonCardHeader,
-    IonCardSubtitle,
-    IonCardTitle,
     IonContent,
     IonHeader,
     IonInput,
@@ -177,21 +171,22 @@ function unidadesDe(variante: VarianteStock): number {
           }
         </ion-list>
         @for (grupo of grupos(); track grupo.producto) {
-          <ion-card>
+          <ion-card class="producto">
             <div class="encabezado">
-              <app-imagen-prenda [url]="grupo.imagenUrl" style="--tamano: 80px"></app-imagen-prenda>
-              <ion-card-header>
-                <ion-card-title>{{ grupo.producto }}</ion-card-title>
-                <ion-card-subtitle>
+              <app-imagen-prenda [url]="grupo.imagenUrl" style="--tamano: 76px"></app-imagen-prenda>
+              <div>
+                <h2>{{ grupo.producto }}</h2>
+                <p class="origen">
                   {{ grupo.categoria }}
                   @if (grupo.banda) {
                     · {{ grupo.banda }}
                   }
-                </ion-card-subtitle>
-                <ion-card-subtitle>
-                  {{ grupo.unidades }} unidades en stock · {{ grupo.codigoUbicacion }}
-                </ion-card-subtitle>
-              </ion-card-header>
+                </p>
+                <div class="rs-chips">
+                  <span class="rs-chip rs-chip--acento">{{ grupo.unidades }} unidades en stock</span>
+                  <span class="rs-codigo">{{ grupo.codigoUbicacion }}</span>
+                </div>
+              </div>
             </div>
             <ion-list>
               @for (opcion of grupo.variantes; track opcion.idVariante) {
@@ -202,7 +197,7 @@ function unidadesDe(variante: VarianteStock): number {
                     <p>Bodega {{ enUbicacion(opcion, 'BODEGA') }} · Sala de ventas {{ enUbicacion(opcion, 'SALA_VENTAS') }}</p>
                   </ion-label>
                   @if (opcion.activo) {
-                    <ion-note slot="end">{{ opcion.disponible }} disp.</ion-note>
+                    <ion-note slot="end" class="disponible"><strong>{{ opcion.disponible }}</strong> disp.</ion-note>
                   } @else {
                     <ion-badge slot="end" color="medium">Desactivado</ion-badge>
                   }
@@ -211,13 +206,13 @@ function unidadesDe(variante: VarianteStock): number {
             </ion-list>
           </ion-card>
         } @empty {
-          <p class="ion-padding-horizontal" role="status">
+          <p role="status">
             {{ cargando() ? 'Cargando productos…' : 'No se encontraron productos.' }}
           </p>
         }
       }
 
-      <div class="ion-padding">
+      <div class="rs-acciones">
         @if (variante() && !busqueda()) {
           <ion-button expand="block" [disabled]="ocupado()" (click)="iniciar()">Iniciar búsqueda</ion-button>
           <ion-button expand="block" fill="clear" [disabled]="ocupado()" (click)="reiniciar()">
@@ -226,12 +221,15 @@ function unidadesDe(variante: VarianteStock): number {
         }
         @if (busqueda(); as actual) {
           @if (actual.duracionSegundos === undefined) {
-            <p class="cronometro" role="timer">{{ cronometro() }}</p>
+            <div class="reloj">
+              <span>Tiempo de búsqueda</span>
+              <p class="cronometro" role="timer">{{ cronometro() }}</p>
+            </div>
             <ion-button expand="block" [disabled]="ocupado()" (click)="escanearEncontrada()">
               Escanear prenda encontrada
             </ion-button>
             @if (escanerNoDisponible()) {
-              <ion-item>
+              <ion-item class="manual">
                 <ion-input
                   label="Código o SKU de la prenda"
                   labelPlacement="stacked"
@@ -247,7 +245,7 @@ function unidadesDe(variante: VarianteStock): number {
               Cancelar búsqueda
             </ion-button>
           } @else {
-            <p role="status">Prenda encontrada en {{ duracion(actual.duracionSegundos) }} minutos.</p>
+            <p class="rs-exito" role="status">Prenda encontrada en {{ duracion(actual.duracionSegundos) }} minutos.</p>
             <ion-button expand="block" (click)="reiniciar()">Nueva búsqueda</ion-button>
           }
         }
@@ -260,16 +258,54 @@ function unidadesDe(variante: VarianteStock): number {
     </ion-content>
   `,
   styles: `
-    .cronometro {
-      font-size: 3rem;
+    .reloj {
+      padding: 20px 0 10px;
+      color: var(--rs-tenue);
+      font-size: 0.75rem;
       font-weight: 600;
+      letter-spacing: 0.16em;
       text-align: center;
+      text-transform: uppercase;
+    }
+    .cronometro {
+      margin: 0;
+      color: var(--ion-color-primary);
+      font-family: var(--rs-fuente-titulo);
+      font-size: 5rem;
+      font-weight: 600;
       font-variant-numeric: tabular-nums;
+      letter-spacing: 0.02em;
+      line-height: 1.1;
     }
     .encabezado {
       display: flex;
       align-items: center;
-      padding: 12px 0 0 16px;
+      gap: 14px;
+      padding: 16px 16px 12px;
+    }
+    h2 {
+      font-family: var(--rs-fuente-titulo);
+      font-size: 1.4rem;
+      font-weight: 600;
+      line-height: 1.15;
+    }
+    .origen {
+      margin: 2px 0 8px;
+      color: var(--rs-tenue);
+      font-size: 0.85rem;
+    }
+    .producto ion-list {
+      border-top: 1px solid var(--rs-borde);
+    }
+    .disponible strong {
+      color: var(--ion-color-primary);
+      font-size: 1.05rem;
+    }
+    .manual {
+      margin-top: 8px;
+      border: 1px solid var(--rs-borde);
+      border-radius: var(--rs-radio-chico);
+      --inner-border-width: 0;
     }
   `,
 })
