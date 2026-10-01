@@ -1,0 +1,164 @@
+export type Ubicacion = 'BODEGA' | 'SALA_VENTAS';
+
+export type TipoMovimiento =
+  | 'INGRESO'
+  | 'VENTA'
+  | 'DEVOLUCION'
+  | 'DESPACHO'
+  | 'MERMA'
+  | 'TRASPASO'
+  | 'AJUSTE';
+
+export type TipoMerma = 'DANADO' | 'MUESTRA' | 'CAMBIO';
+
+export interface Existencia {
+  ubicacion: Ubicacion;
+  cantidad: number;
+}
+
+/** Variante con su stock, tal como la ven Vendedor, Bodega y Gerente. */
+export interface VarianteStock {
+  idVariante: number;
+  sku: string;
+  codigo: string;
+  producto: string;
+  /** Categoría del producto, por ejemplo "Poleras" o "Cinturones". */
+  categoria: string;
+  /** Banda a la que pertenece el producto; `null` en prendas que no son de una banda. */
+  banda: string | null;
+  /** URL de la foto del producto; `null` si aún no tiene. */
+  imagenUrl: string | null;
+  /** Posición del producto en la bodega, por ejemplo "B-POL-03". La genera el servicio. */
+  codigoUbicacion: string;
+  talla: string;
+  color: string;
+  activo: boolean;
+  existencias: Existencia[];
+  reservado: number;
+  /** Suma de existencias menos unidades reservadas. */
+  disponible: number;
+}
+
+export interface Movimiento {
+  idMovimiento: number;
+  idVariante: number;
+  tipo: TipoMovimiento;
+  tipoMerma?: TipoMerma;
+  ubicacion: Ubicacion;
+  ubicacionDestino?: Ubicacion;
+  /** Unidades movidas; en un ajuste es la diferencia aplicada (puede ser negativa). */
+  cantidad: number;
+  fecha: string;
+  idUsuario: number;
+  motivo: string;
+}
+
+/** Respuesta de toda operación que registra movimientos. */
+export interface ResultadoMovimientos {
+  movimientos: Movimiento[];
+  variantes: VarianteStock[];
+}
+
+interface OperacionIdempotente {
+  /** UUID generado por el cliente; reenviar la misma clave no duplica la operación. */
+  claveIdempotencia: string;
+}
+
+/**
+ * Categoría de productos con los datos que le son propios. GET /inventario/categorias
+ *
+ * Cada categoría define qué tallas admite (los pantalones van de 38 a 50; las poleras de
+ * XS a XXL) y si sus productos pertenecen a una banda. Los clientes usan esto para mostrar
+ * solo los campos y filtros que corresponden a la categoría elegida.
+ */
+export interface Categoria {
+  nombre: string;
+  tallas: string[];
+  usaBanda: boolean;
+}
+
+/**
+ * POST /inventario/bandas, /inventario/categorias y /inventario/colores
+ *
+ * Registra una banda, categoría o color sin necesidad de crear un producto. Estas rutas,
+ * y sus GET, responden la lista completa en orden alfabético: nombres en bandas y colores,
+ * y `Categoria[]` en categorías. Registrar un nombre que ya existe no es un error: se
+ * conserva el existente. Una categoría nueva nace con tallas XS a XXL y admite banda.
+ */
+export interface NombreRequest {
+  nombre: string;
+}
+
+/**
+ * POST /inventario/productos
+ *
+ * Crea un producto con una variante y registra el ingreso de sus primeras unidades, todo
+ * en una sola operación. El servicio genera el SKU, el código escaneable y el código de
+ * ubicación, y responde la variante creada con su stock. Si el producto ya existe,
+ * agrega la variante de talla y color a ese producto.
+ */
+export interface ProductoNuevoRequest extends OperacionIdempotente {
+  nombre: string;
+  categoria: string;
+  banda: string | null;
+  talla: string;
+  color: string;
+  /** Unidades recibidas; entero mayor que cero. Quedan registradas como un movimiento de ingreso. */
+  cantidad: number;
+  /** Ubicación donde ingresan esas unidades. */
+  ubicacion: Ubicacion;
+  /** Foto del producto como data URL (`data:image/...;base64,...`). */
+  imagen: string;
+}
+
+/** POST /inventario/movimientos/ingresos */
+export interface IngresoRequest extends OperacionIdempotente {
+  ubicacion: Ubicacion;
+  motivo?: string;
+  lineas: { idVariante: number; cantidad: number }[];
+}
+
+/** POST /inventario/movimientos/mermas */
+export interface MermaRequest extends OperacionIdempotente {
+  idVariante: number;
+  ubicacion: Ubicacion;
+  cantidad: number;
+  tipoMerma: TipoMerma;
+  motivo: string;
+}
+
+/** POST /inventario/movimientos/traspasos */
+export interface TraspasoRequest extends OperacionIdempotente {
+  idVariante: number;
+  origen: Ubicacion;
+  destino: Ubicacion;
+  cantidad: number;
+  motivo: string;
+}
+
+/** POST /inventario/movimientos/ajustes */
+export interface AjusteRequest extends OperacionIdempotente {
+  idVariante: number;
+  ubicacion: Ubicacion;
+  cantidadContada: number;
+  motivo: string;
+}
+
+/** POST /inventario/busquedas */
+export interface BusquedaRequest {
+  idVariante: number;
+}
+
+/** PATCH /inventario/busquedas/:id */
+export interface CierreBusquedaRequest {
+  resultado: 'ENCONTRADA' | 'CANCELADA';
+}
+
+export interface Busqueda {
+  idBusqueda: number;
+  idVariante: number;
+  inicio: string;
+  /** Solo presente cuando la búsqueda se completó con la prenda encontrada. */
+  fin?: string;
+  duracionSegundos?: number;
+}

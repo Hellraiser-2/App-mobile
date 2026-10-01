@@ -1,0 +1,127 @@
+import { Component, inject, input, output, signal } from '@angular/core';
+import { IonButton, IonItem, IonLabel, IonList, IonNote, IonSearchbar, IonText } from '@ionic/angular';
+import type { VarianteStock } from '@rockstar/contracts';
+import { firstValueFrom } from 'rxjs';
+
+import { codigoDeError, mensajeDeError } from '../../core/api/errores';
+import { nombreVariante, valorDeEvento } from '../../shared/formato';
+import { ImagenPrendaComponent } from '../../shared/imagen-prenda.component';
+import { InventarioApi } from '../inventario/inventario.api';
+import { EscanerService } from './escaner.service';
+
+/**
+ * Selección de una variante escaneando su código o, como alternativa siempre
+ * disponible, buscándola por SKU o nombre.
+ */
+@Component({
+  selector: 'app-buscador-variante',
+  imports: [ImagenPrendaComponent, IonButton, IonItem, IonLabel, IonList, IonNote, IonSearchbar, IonText],
+  template: `
+    @if (conEscaner()) {
+      <ion-button expand="block" [disabled]="ocupado()" (click)="escanear()">Escanear código</ion-button>
+    }
+    @if (aviso(); as mensaje) {
+      <ion-text color="warning">
+        <p class="aviso" role="status">{{ mensaje }}</p>
+      </ion-text>
+    }
+    <ion-searchbar
+      placeholder="Buscar por SKU o nombre"
+      [debounce]="300"
+      [value]="texto()"
+      (ionInput)="buscar(valor($event))"
+    ></ion-searchbar>
+    @if (resultados().length > 0) {
+      <ion-list>
+        @for (variante of resultados(); track variante.idVariante) {
+          <ion-item button (click)="elegir(variante)">
+            <app-imagen-prenda slot="start" [url]="variante.imagenUrl" style="--tamano: 48px"></app-imagen-prenda>
+            <ion-label>
+              <h3>{{ nombre(variante) }}</h3>
+              <p>{{ variante.sku }}</p>
+            </ion-label>
+            <ion-note slot="end">{{ variante.disponible }} disp.</ion-note>
+          </ion-item>
+        }
+      </ion-list>
+    } @else if (sinResultados()) {
+      <p class="aviso">No se encontraron productos.</p>
+    }
+  `,
+  styles: `
+    .aviso {
+      padding: 0 16px;
+    }
+  `,
+})
+export class BuscadorVarianteComponent {
+  private readonly api = inject(InventarioApi);
+  private readonly escaner = inject(EscanerService);
+
+  /** Si es falso, solo se ofrece la búsqueda por texto. */
+  readonly conEscaner = input(true);
+  readonly seleccionada = output<VarianteStock>();
+
+  protected readonly texto = signal('');
+  protected readonly resultados = signal<VarianteStock[]>([]);
+  protected readonly sinResultados = signal(false);
+  readonly aviso = signal<string | null>(null);
+  protected readonly ocupado = signal(false);
+
+  protected readonly nombre = nombreVariante;
+  protected readonly valor = valorDeEvento;
+
+  async escanear(): Promise<void> {
+    this.aviso.set(null);
+    this.ocupado.set(true);
+    try {
+      const resultado = await this.escaner.escanear();
+      if (resultado.estado === 'leido') {
+        await this.resolverCodigo(resultado.codigo);
+      } else if (resultado.estado === 'no-disponible') {
+        this.aviso.set(resultado.motivo);
+      }
+    } finally {
+      this.ocupado.set(false);
+    }
+  }
+
+  async buscar(texto: string): Promise<void> {
+    this.texto.set(texto);
+    this.aviso.set(null);
+    if (texto.trim() === '') {
+      this.resultados.set([]);
+      this.sinResultados.set(false);
+      return;
+    }
+    try {
+      const resultados = await firstValueFrom(this.api.buscarVariantes(texto));
+      // Se descarta la respuesta si el usuario siguió escribiendo mientras llegaba.
+      if (this.texto() === texto) {
+        this.resultados.set(resultados);
+        this.sinResultados.set(resultados.length === 0);
+      }
+    } catch (error) {
+      this.aviso.set(mensajeDeError(error));
+    }
+  }
+
+  protected elegir(variante: VarianteStock): void {
+    this.texto.set('');
+    this.resultados.set([]);
+    this.sinResultados.set(false);
+    this.seleccionada.emit(variante);
+  }
+
+  private async resolverCodigo(codigo: string): Promise<void> {
+    try {
+      this.seleccionada.emit(await firstValueFrom(this.api.variantePorCodigo(codigo)));
+    } catch (error) {
+      this.aviso.set(
+        codigoDeError(error) === 'NO_ENCONTRADO'
+          ? `El código ${codigo} no está registrado.`
+          : mensajeDeError(error),
+      );
+    }
+  }
+}
