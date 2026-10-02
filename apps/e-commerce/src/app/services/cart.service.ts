@@ -1,5 +1,5 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import type { CheckoutRequest, CheckoutResponse } from '@rockstar/contracts';
+import type { CheckoutRequest, CheckoutResponse, CompraPendiente } from '@rockstar/contracts';
 
 import { uuid } from '../core/api';
 import { Product } from '../data/models';
@@ -18,6 +18,7 @@ export interface ShippingData {
 const CART_KEY = 'rockstar.tienda.carrito';
 const SHIPPING_KEY = 'rockstar.tienda.despacho';
 const PENDING_KEY = 'rockstar.tienda.compra';
+const RESUMED_KEY = 'rockstar.tienda.compra-retomada';
 const EMPTY_SHIPPING: ShippingData = { recipient: '', phone: '', regionId: null, comunaId: null, address: '' };
 
 function read<T>(storage: Storage, key: string, fallback: T): T {
@@ -60,6 +61,9 @@ export class CartService {
   readonly subtotal = computed(() => this.items().reduce((sum, i) => sum + i.price * i.qty, 0));
   readonly total = computed(() => this.subtotal() + (this.items().length ? (this.shippingCost() ?? 0) : 0));
   readonly count = computed(() => this.items().reduce((s, i) => s + i.qty, 0));
+
+  /** Lo que incluye la compra pendiente cuando se retomó desde el perfil; `null` si salió del carrito actual. */
+  private resumedLines: { id: number; qty: number }[] | null = read(sessionStorage, RESUMED_KEY, null);
 
   /** El carrito se muestra como un panel lateral sobre cualquier pantalla de la tienda. */
   readonly isOpen = signal(false);
@@ -116,6 +120,8 @@ export class CartService {
     write(localStorage, SHIPPING_KEY, null);
     this.shippingCost.set(null);
     this.setPending(null);
+    this.resumedLines = null;
+    write(sessionStorage, RESUMED_KEY, null);
   }
 
   /**
@@ -194,15 +200,42 @@ export class CartService {
     const purchase = await this.api.checkout({ claveIdempotencia: this.purchaseKey.value, ...request });
     this.purchaseKey = null;
     this.setPending(purchase);
+    this.resumedLines = null;
+    write(sessionStorage, RESUMED_KEY, null);
     return purchase;
   }
 
-  /** Cierra la compra pendiente. Pagada, vacía el carrito; si no, el carrito conserva sus productos. */
+  /**
+   * Retoma desde el perfil una compra que quedó sin pagar. Esa compra ya tiene sus
+   * unidades reservadas en el backend: aquí solo se la deja lista para la pantalla de pago.
+   */
+  resume(purchase: CompraPendiente): void {
+    const { idVenta, subtotal, flete, total, tokenPago, expiraEn, lineas } = purchase;
+    this.setPending({ idVenta, subtotal, flete, total, tokenPago, expiraEn });
+    this.resumedLines = lineas.map((l) => ({ id: l.idVariante, qty: l.cantidad }));
+    write(sessionStorage, RESUMED_KEY, this.resumedLines);
+  }
+
+  /** Cierra la compra pendiente. Pagada, saca del carrito lo comprado; si no, el carrito conserva sus productos. */
   finishPayment(paid: boolean): void {
+    const resumed = this.resumedLines;
     this.setPending(null);
-    if (paid) {
-      this.clear();
+    this.resumedLines = null;
+    write(sessionStorage, RESUMED_KEY, null);
+    if (!paid) {
+      return;
     }
+    if (resumed === null) {
+      // La compra salió del carrito tal como está: se vacía.
+      this.clear();
+      return;
+    }
+    // Una compra retomada puede no coincidir con el carrito de ahora: solo se descuenta lo que se pagó.
+    this.setItems(
+      this.items()
+        .map((item) => ({ ...item, qty: item.qty - (resumed.find((line) => line.id === item.id)?.qty ?? 0) }))
+        .filter((item) => item.qty > 0),
+    );
   }
 
   private setItems(items: CartItem[]): void {

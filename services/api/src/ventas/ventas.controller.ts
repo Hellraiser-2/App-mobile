@@ -1,5 +1,5 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
-import type { CheckoutResponse, ResultadoPago, Usuario } from '@rockstar/contracts';
+import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
+import type { CheckoutResponse, CompraPendiente, ResultadoPago, Usuario } from '@rockstar/contracts';
 
 import { Publica, Roles, UsuarioActual } from '../auth/decoradores.js';
 import { ComprasService } from './compras.service.js';
@@ -17,6 +17,13 @@ export class VentasController {
   @Roles('CLIENTE')
   checkout(@Body() cuerpo: unknown, @UsuarioActual() cliente: Usuario): Promise<CheckoutResponse> {
     return this.compras.iniciar(cuerpo, cliente);
+  }
+
+  /** Las compras de quien consulta que aún esperan su pago, de la más reciente a la más antigua. */
+  @Get('ventas/pendientes')
+  @Roles('CLIENTE')
+  pendientes(@UsuarioActual() cliente: Usuario): Promise<CompraPendiente[]> {
+    return this.compras.pendientesDe(cliente);
   }
 
   /**

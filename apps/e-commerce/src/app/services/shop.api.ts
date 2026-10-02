@@ -3,9 +3,11 @@ import { Injectable, inject } from '@angular/core';
 import type {
   CheckoutRequest,
   CheckoutResponse,
+  CompraPendiente,
   Comuna,
   CotizacionFlete,
   PedidoCliente,
+  PerfilUsuario,
   Region,
   ResultadoPago,
   RetornoPagoRequest,
@@ -39,6 +41,16 @@ export class ShopApi {
   resolvePayment(tokenPago: string, aprobar: boolean): Promise<ResultadoPago> {
     const body: RetornoPagoRequest = { tokenPago, aprobar };
     return firstValueFrom(this.http.post<ResultadoPago>(`${API_URL}/pagos/webpay/retorno`, body));
+  }
+
+  /** Los datos de la cuenta con sesión iniciada, tal como están hoy en el backend. */
+  profile(): Promise<PerfilUsuario> {
+    return firstValueFrom(this.http.get<PerfilUsuario>(`${API_URL}/usuarios/yo`));
+  }
+
+  /** Compras iniciadas que aún esperan su pago y conservan su reserva. */
+  pendingPurchases(): Promise<CompraPendiente[]> {
+    return firstValueFrom(this.http.get<CompraPendiente[]>(`${API_URL}/ventas/pendientes`));
   }
 
   myOrders(): Promise<PedidoCliente[]> {

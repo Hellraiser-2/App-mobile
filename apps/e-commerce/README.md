@@ -7,11 +7,12 @@ Tienda online de ropa Rock & Metal, conectada al backend de Rockstar (`services/
 - Catálogo con las prendas que tienen precio, con su disponibilidad al momento.
 - Barra de navegación fija con un menú desplegable por categoría: ver todo, sus bandas y sus tallas. Sale del catálogo, sin listas escritas a mano.
 - Buscador en la barra de navegación. Filtra en el navegador sobre el catálogo ya cargado: el texto no viaja al backend. Cómo se limpia y se muestra ese texto está en `src/app/data/search.ts`.
-- Página de bandas, con una tarjeta por banda que lleva a sus prendas.
+- Página de bandas, con una tarjeta por banda que lleva a sus prendas. La foto de cada banda la entrega el backend, que la guarda en la base de datos; se muestra con su crédito.
 - Carrito como panel lateral, que se conserva en el dispositivo y se pone al día con los precios y el stock actuales.
 - Cuentas de clientes: registro e inicio de sesión con correo y contraseña.
 - Compra: datos de despacho, flete según la comuna, reserva de las unidades por 15 minutos y pago.
 - Mis pedidos: estado de cada pedido y, cuando se despacha, su código de seguimiento.
+- Perfil: el botón con el nombre, en el encabezado, abre los datos de la cuenta y sus compras. Las pendientes son las que aún esperan pago y se pueden retomar; las hechas son las pagadas, con el estado de su pedido.
 - Acceso del personal con sus cuentas del backend. Bodega ingresa stock y registra mermas; el Gerente define precio y descripción y ve las cifras.
 - Chat de soporte Roxy, con respuestas locales.
 
@@ -56,6 +57,7 @@ src/app/
 ├── components/
 │   ├── shop-nav.component.ts     Barra de categorías con menús desplegables
 │   ├── cart-drawer.component.ts  Panel lateral del carrito
+│   ├── order-card.component.ts   Tarjeta de una compra pagada, en Mis pedidos y en el perfil
 │   └── cart-panel.component.ts   Contenido del carrito: productos, despacho y totales
 ├── data/
 │   ├── models.ts            Modelos de la interfaz y formato de precios y fechas
@@ -74,6 +76,7 @@ src/app/
     ├── cart/                Abre la tienda con el carrito desplegado
     ├── pago/                Pago simulado y resultado
     ├── pedidos/             Mis pedidos
+    ├── perfil/              Datos de la cuenta, compras pendientes y compras hechas
     ├── warehouse/           Bodega (personal)
     ├── admin/               Finanzas y cuentas (Gerente)
     └── support/             Chat Roxy

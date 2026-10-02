@@ -80,10 +80,19 @@ import { ToastService } from './services/toast.service';
             </div>
           </ion-title>
           <ion-buttons slot="end">
-            <div class="user-chip" *ngIf="user() as u" [class.is-admin]="u.isAdmin">
-              <span class="dot"></span>
-              <span>{{ u.name }}</span>
-            </div>
+            <!-- Botón de perfil: con sesión abre el perfil; un invitado va a iniciar sesión. -->
+            <button
+              type="button"
+              class="user-chip profile-button"
+              *ngIf="user() as u"
+              [class.is-admin]="u.isAdmin"
+              [class.current]="onProfile()"
+              [attr.aria-label]="isLoggedIn() ? 'Ver mi perfil, ' + u.name : 'Iniciar sesión'"
+              (click)="openProfile()"
+            >
+              <ion-icon name="person-circle-outline" aria-hidden="true"></ion-icon>
+              <span class="profile-name">{{ u.name }}</span>
+            </button>
             <ion-button *ngIf="!isAdminOnly()" aria-label="Abrir el carrito" (click)="cart.open()">
               <ion-icon name="cart-outline"></ion-icon>
               <ion-badge color="danger" *ngIf="cartCount() > 0">{{ cartCount() }}</ion-badge>
@@ -154,6 +163,15 @@ import { ToastService } from './services/toast.service';
       font-size: 14px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     }
+    .profile-button {
+      max-width: 42vw; margin-right: 4px;
+      color: var(--text); font: inherit; font-size: 12px; cursor: pointer;
+    }
+    .profile-button ion-icon { flex: none; font-size: 20px; color: var(--text-muted); }
+    .profile-button.is-admin ion-icon { color: var(--accent-hover); }
+    .profile-button:hover, .profile-button.current { border-color: var(--accent); }
+    .profile-button:focus-visible { outline: 2px solid var(--accent-hover); outline-offset: 2px; }
+    .profile-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .tab-selected {
       color: var(--ion-color-primary);
     }
@@ -182,6 +200,7 @@ export class AppComponent {
 
   showHeader = computed(() => this.auth.entryDismissed() && this.path() !== '/entry');
   showTabs = computed(() => this.auth.entryDismissed() && this.path() !== '/entry');
+  onProfile = computed(() => this.path() === '/perfil');
   /** La barra de categorías va en las pantallas de la tienda, no en las del personal. */
   showNav = computed(() => this.showHeader() && this.path() !== '/warehouse' && this.path() !== '/admin');
   /** El personal no compra en la tienda: no ve el carrito. */
@@ -219,6 +238,16 @@ export class AppComponent {
   login() {
     this.auth.logout();
     this.router.navigateByUrl('/entry');
+  }
+
+  openProfile() {
+    if (this.auth.isLoggedIn()) {
+      this.router.navigateByUrl('/perfil');
+    } else {
+      // Un invitado no tiene perfil: se le ofrece iniciar sesión o crear su cuenta, y luego llega a él.
+      this.auth.logout();
+      this.router.navigate(['/entry'], { queryParams: { modo: 'client', volver: '/perfil' } });
+    }
   }
 
   logout() {

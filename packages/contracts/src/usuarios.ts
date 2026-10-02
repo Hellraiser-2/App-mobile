@@ -41,3 +41,9 @@ export interface RegistroRequest {
 export interface CuentaInterna extends Usuario {
   activo: boolean;
 }
+
+/** Datos de la cuenta de quien consulta. GET /usuarios/yo (cualquier sesión) */
+export interface PerfilUsuario extends Usuario {
+  /** Cuándo se creó la cuenta. */
+  creadoEn: string;
+}

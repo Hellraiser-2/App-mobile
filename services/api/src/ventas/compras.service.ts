@@ -2,7 +2,9 @@ import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nest
 import type {
   CheckoutRequest,
   CheckoutResponse,
+  CompraPendiente,
   DatosDespacho,
+  LineaPedidoCliente,
   LineaSinDisponibilidad,
   ResultadoPago,
   RetornoPagoRequest,
@@ -345,6 +347,66 @@ export class ComprasService implements OnModuleInit, OnModuleDestroy {
       default:
         return { ...base, estado: 'RECHAZADA', motivo: pago!.motivo_rechazo ?? 'El pago no se completó.' };
     }
+  }
+
+  // --- Compras por pagar ---
+
+  /**
+   * Compras del cliente que esperan su pago y aún tienen las unidades reservadas, de la
+   * más reciente a la más antigua. Las que ya vencieron no se listan: no se pueden pagar.
+   */
+  async pendientesDe(cliente: Usuario): Promise<CompraPendiente[]> {
+    const filas = await this.db.consultar<{
+      id_venta: number;
+      fecha: Date;
+      total: number;
+      flete: number;
+      token: string;
+      expira_en: Date;
+      destinatario: string;
+      direccion: string;
+      comuna: string;
+      region: string;
+      lineas: LineaPedidoCliente[];
+    }>(
+      `SELECT ve.id_venta, ve.fecha, ve.total, cv.flete_cobrado AS flete, t.token_webpay AS token,
+              t.creado_en + make_interval(mins => $2) AS expira_en,
+              sd.destinatario, sd.direccion, co.nombre AS comuna, re.nombre AS region,
+              COALESCE((
+                SELECT json_agg(json_build_object(
+                         'idVariante', v.id_variante, 'sku', v.sku, 'producto', p.nombre, 'talla', ta.nombre,
+                         'color', c.nombre, 'cantidad', d.cantidad, 'precioUnitario', d.precio_unitario) ORDER BY d.id_detalle)
+                FROM ventas.detalle_venta d
+                JOIN inventario.variantes v ON v.id_variante = d.id_variante
+                JOIN inventario.productos p ON p.id_producto = v.id_producto
+                JOIN inventario.tallas ta ON ta.id_talla = v.id_talla
+                JOIN inventario.colores c ON c.id_color = v.id_color
+                WHERE d.id_venta = ve.id_venta), '[]'::json) AS lineas
+       FROM ventas.ventas ve
+       JOIN ventas.estados_venta ev ON ev.id_estado = ve.id_estado AND ev.codigo = 'PENDIENTE_PAGO'
+       JOIN ventas.costos_venta cv ON cv.id_venta = ve.id_venta
+       JOIN pagos.transacciones t ON t.id_venta = ve.id_venta AND t.estado = 'PENDIENTE'
+       JOIN logistica.solicitudes_despacho sd ON sd.id_venta = ve.id_venta
+       JOIN logistica.comunas co ON co.id_comuna = sd.id_comuna
+       JOIN logistica.regiones re ON re.id_region = co.id_region
+       WHERE ve.id_cliente = $1 AND t.creado_en + make_interval(mins => $2) > now()
+       ORDER BY ve.id_venta DESC`,
+      [cliente.id, MINUTOS_PARA_PAGAR],
+    );
+    return filas.map((fila) => ({
+      idVenta: fila.id_venta,
+      subtotal: fila.total - fila.flete,
+      flete: fila.flete,
+      total: fila.total,
+      tokenPago: fila.token,
+      expiraEn: fila.expira_en.toISOString(),
+      fecha: fila.fecha.toISOString(),
+      lineas: fila.lineas,
+      destinatario: fila.destinatario,
+      direccion: fila.direccion,
+      comuna: fila.comuna,
+      region: fila.region,
+    }));
   }
 
   // --- Compras abandonadas ---

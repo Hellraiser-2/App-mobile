@@ -4,6 +4,7 @@ import type { PGlite } from '@electric-sql/pglite';
 import type {
   ArticuloCatalogo,
   CheckoutResponse,
+  CompraPendiente,
   Comuna,
   CotizacionFlete,
   CuentaInterna,
@@ -11,6 +12,7 @@ import type {
   Movimiento,
   Pedido,
   PedidoCliente,
+  PerfilUsuario,
   Region,
   ResultadoPago,
   SesionResponse,
@@ -443,6 +445,69 @@ describe('compra web', () => {
     expect((await enCatalogo(RAYO))!.disponible).toBe(0);
     await pagar((respuestas.find((r) => r.status === 201)!.cuerpo as CheckoutResponse).tokenPago, false);
     expect((await enCatalogo(RAYO))!.disponible).toBe(disponible);
+  });
+});
+
+describe('perfil del cliente', () => {
+  it('cada cuenta ve sus propios datos, leídos de la base', async () => {
+    const email = `perfil-${randomUUID().slice(0, 8)}@correo.cl`;
+    const antes = Date.now();
+    const sesion = (await enviar<SesionResponse>('/usuarios/auth/registro', { nombre: 'Ana Perfil', email, password: 'guitarra-8' })).cuerpo;
+
+    const { status, cuerpo } = await obtener<PerfilUsuario>('/usuarios/yo', sesion.accessToken);
+
+    expect(status).toBe(200);
+    expect(cuerpo).toEqual({ id: sesion.usuario.id, nombre: 'Ana Perfil', email, rol: 'CLIENTE', creadoEn: expect.any(String) });
+    expect(new Date(cuerpo.creadoEn).getTime()).toBeGreaterThanOrEqual(antes - 5000);
+    // No entrega la contraseña ni su hash.
+    expect(JSON.stringify(cuerpo)).not.toMatch(/hash|contrasena|password/i);
+
+    expect((await obtener<PerfilUsuario>('/usuarios/yo', bodega)).cuerpo).toMatchObject({ email: 'bodega@rockstar.cl', rol: 'BODEGA' });
+    expect((await obtener('/usuarios/yo')).status).toBe(401);
+  });
+
+  it('una cuenta desactivada deja de ver su perfil aunque su token siga vigente', async () => {
+    const sesion = (await enviar<SesionResponse>('/usuarios/auth/registro', { nombre: 'Baja', email: `baja-${randomUUID().slice(0, 8)}@correo.cl`, password: 'guitarra-8' })).cuerpo;
+    await db.query('UPDATE usuarios.usuarios SET activo = false WHERE id_usuario = $1', [sesion.usuario.id]);
+    expect((await obtener('/usuarios/yo', sesion.accessToken)).status).toBe(401);
+  });
+
+  it('lista las compras que esperan pago, con lo necesario para retomarlas', async () => {
+    const comprador = (await enviar<SesionResponse>('/usuarios/auth/registro', { nombre: 'Comprador', email: `comprador-${randomUUID().slice(0, 8)}@correo.cl`, password: 'guitarra-8' })).cuerpo.accessToken;
+    const pendientes = async (token = comprador) => (await obtener<CompraPendiente[]>('/ventas/pendientes', token)).cuerpo;
+    expect(await pendientes()).toEqual([]);
+
+    const primera = (await comprar([{ idVariante: EDDIE, cantidad: 2 }], comprador)).cuerpo;
+    const segunda = (await comprar([{ idVariante: EDDIE, cantidad: 1 }], comprador, { despacho: despachoA(temuco) })).cuerpo;
+
+    const lista = await pendientes();
+    // La más reciente primero.
+    expect(lista.map((c) => c.idVenta)).toEqual([segunda.idVenta, primera.idVenta]);
+    expect(lista[1]).toEqual({
+      ...primera,
+      fecha: expect.any(String),
+      destinatario: 'Cliente Demo',
+      direccion: 'Av. Siempre Viva 742',
+      comuna: 'Providencia',
+      region: 'Región Metropolitana',
+      lineas: [{ idVariante: EDDIE, sku: 'RS-0007', producto: 'Polera Eddie', talla: 'M', color: 'Negro', cantidad: 2, precioUnitario: 15990 }],
+    });
+    expect(lista[0]).toMatchObject({ comuna: 'Temuco', flete: 7990, total: 15990 + 7990 });
+
+    // Cada cliente ve solo las suyas, y el personal no tiene compras.
+    expect(await pendientes(cliente)).toEqual([]);
+    expect((await obtener('/ventas/pendientes', bodega)).status).toBe(403);
+    expect((await obtener('/ventas/pendientes')).status).toBe(401);
+
+    // Pagada, deja de estar pendiente y pasa a ser un pedido; rechazada, simplemente sale.
+    await pagar(primera.tokenPago);
+    expect((await pendientes()).map((c) => c.idVenta)).toEqual([segunda.idVenta]);
+    expect((await obtener<PedidoCliente[]>('/logistica/pedidos/mios', comprador)).cuerpo.map((p) => p.idVenta)).toEqual([primera.idVenta]);
+
+    // Vencido el plazo deja de listarse, aunque todavía nadie la haya cerrado.
+    await db.query(`UPDATE pagos.transacciones SET creado_en = creado_en - interval '16 minutes' WHERE id_venta = $1`, [segunda.idVenta]);
+    expect(await pendientes()).toEqual([]);
+    await pagar(segunda.tokenPago);
   });
 });
 

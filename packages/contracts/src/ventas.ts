@@ -1,3 +1,5 @@
+import type { LineaPedidoCliente } from './logistica';
+
 /** Datos del destino de una compra web. */
 export interface DatosDespacho {
   idComuna: number;
@@ -67,4 +69,19 @@ export interface ResultadoPago {
   codigoAutorizacion?: string;
   /** Por qué no se cobró; solo en una compra rechazada. */
   motivo?: string;
+}
+
+/**
+ * Compra iniciada que aún no se paga. GET /ventas/pendientes (Cliente)
+ *
+ * Solo las vigentes: pasados los 15 minutos de reserva la compra expira y deja de
+ * aparecer. Con `tokenPago` se puede retomar el pago.
+ */
+export interface CompraPendiente extends CheckoutResponse {
+  fecha: string;
+  lineas: LineaPedidoCliente[];
+  destinatario: string;
+  direccion: string;
+  comuna: string;
+  region: string;
 }
