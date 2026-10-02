@@ -21,6 +21,7 @@ import type {
   TraspasoRequest,
   Ubicacion,
   Usuario,
+  VarianteEdicionRequest,
   VarianteStock,
 } from '@rockstar/contracts';
 
@@ -334,6 +335,10 @@ export class BackendSimulado {
     if (cierre) {
       return this.cerrarBusqueda(Number(cierre[1]), cuerpo as CierreBusquedaRequest);
     }
+    const edicion = /^PATCH \/inventario\/variantes\/(\d+)$/.exec(ruta);
+    if (edicion) {
+      return this.editarVariante(Number(edicion[1]), (cuerpo ?? {}) as VarianteEdicionRequest);
+    }
     const despacho = /^POST \/logistica\/pedidos\/(\d+)\/despacho$/.exec(ruta);
     if (despacho) {
       return this.generarDespacho(Number(despacho[1]), usuario);
@@ -556,6 +561,66 @@ export class BackendSimulado {
       cantidad: datos.cantidad,
       motivo: 'Ingreso inicial del producto',
     });
+    return this.vista(variante);
+  }
+
+  /**
+   * Edita una prenda: la talla y el color de la variante, y el nombre, la categoría, la
+   * banda y la foto de su producto, que cambian para todas sus tallas. Valida todo antes
+   * de aplicar nada.
+   */
+  private editarVariante(idVariante: number, datos: VarianteEdicionRequest): VarianteStock {
+    const texto = (valor: unknown) => (typeof valor === 'string' ? valor.trim() : '');
+    const variante = this.variantes.find((v) => v.idVariante === idVariante);
+    if (!variante) {
+      throw new ErrorSimulado(404, 'NO_ENCONTRADO', 'La variante no existe.');
+    }
+    const campos = ['nombre', 'categoria', 'banda', 'talla', 'color', 'imagen'] as const;
+    exigir(campos.some((campo) => datos[campo] !== undefined), 'No hay cambios que aplicar.');
+    const delProducto = this.variantes.filter((v) => v.producto === variante.producto);
+
+    const nombre = datos.nombre === undefined ? variante.producto : texto(datos.nombre);
+    exigir(nombre !== '', 'El nombre es obligatorio.');
+    if (this.variantes.some((v) => !delProducto.includes(v) && mismoTexto(v.producto, nombre))) {
+      throw new ErrorSimulado(409, 'PRODUCTO_DUPLICADO', 'Ya existe otro producto con ese nombre.');
+    }
+    exigir(datos.categoria === undefined || texto(datos.categoria) !== '', 'La categoría es obligatoria.');
+    exigir(datos.imagen === undefined || texto(datos.imagen).startsWith('data:image/'), 'La imagen no es válida.');
+    exigir(datos.talla === undefined || texto(datos.talla) !== '', 'La talla es obligatoria.');
+    exigir(datos.color === undefined || texto(datos.color) !== '', 'El color es obligatorio.');
+    const talla = datos.talla === undefined ? variante.talla : texto(datos.talla);
+    const color = datos.color === undefined ? variante.color : texto(datos.color);
+    if (delProducto.some((v) => v !== variante && mismoTexto(v.talla, talla) && mismoTexto(v.color, color))) {
+      throw new ErrorSimulado(409, 'VARIANTE_DUPLICADA', 'El producto ya tiene esa talla y color.');
+    }
+
+    const categoria = this.incorporarCategoria(datos.categoria === undefined ? variante.categoria : datos.categoria);
+    // Cada categoría tiene su zona en la bodega: al cambiarla, el producto pasa a un espacio nuevo de esa zona.
+    const codigoUbicacion = mismoTexto(categoria.nombre, variante.categoria)
+      ? variante.codigoUbicacion
+      : this.ubicaciones.siguiente(categoria.nombre);
+    // Las categorías sin banda, como los pantalones, no la conservan ni la aceptan.
+    let banda = categoria.usaBanda ? variante.banda : null;
+    if (categoria.usaBanda && datos.banda !== undefined) {
+      banda = texto(datos.banda) === '' ? null : this.incorporar(this.bandas, datos.banda);
+    }
+    for (const delMismo of delProducto) {
+      delMismo.producto = nombre;
+      delMismo.categoria = categoria.nombre;
+      delMismo.codigoUbicacion = codigoUbicacion;
+      delMismo.banda = banda;
+      if (datos.imagen !== undefined) {
+        delMismo.imagenUrl = datos.imagen;
+      }
+    }
+    variante.talla = talla;
+    variante.color = datos.color === undefined ? color : this.incorporar(this.colores, color);
+    // Las tallas del producto pasan a ser tallas de su categoría.
+    for (const { talla: suTalla } of delProducto) {
+      if (!categoria.tallas.some((registrada) => mismoTexto(registrada, suTalla))) {
+        categoria.tallas.push(suTalla);
+      }
+    }
     return this.vista(variante);
   }
 

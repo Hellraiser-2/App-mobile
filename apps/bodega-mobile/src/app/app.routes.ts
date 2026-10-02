@@ -29,6 +29,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/ingreso/producto-nuevo.page').then((m) => m.ProductoNuevoPage),
       },
       {
+        path: 'producto/editar',
+        loadComponent: () => import('./features/producto/editar-producto.page').then((m) => m.EditarProductoPage),
+      },
+      {
         path: 'merma',
         loadComponent: () => import('./features/merma/merma.page').then((m) => m.MermaPage),
       },

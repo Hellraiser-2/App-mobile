@@ -10,6 +10,7 @@ const MENSAJES_POR_CODIGO: Record<string, string> = {
   UNIDADES_RESERVADAS: 'Hay unidades comprometidas en pedidos; no se puede descontar esa cantidad.',
   VARIANTE_INACTIVA: 'El producto está desactivado y no admite movimientos.',
   VARIANTE_DUPLICADA: 'Ya existe ese producto con la misma talla y color.',
+  PRODUCTO_DUPLICADO: 'Ya existe otro producto con ese nombre.',
 };
 
 function cuerpoDeError(error: HttpErrorResponse): Partial<ErrorApi> {

@@ -348,6 +348,104 @@ describe('alta de productos', () => {
   });
 });
 
+describe('edición de productos', () => {
+  const editar = <T = VarianteStock>(idVariante: number, cambios: unknown, token = bodega) =>
+    llamar<T>('PATCH', `/inventario/variantes/${idVariante}`, cambios, token);
+  const OTRA_FOTO = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==';
+
+  it('cambia el nombre, la banda, la talla, el color y la foto de una prenda', async () => {
+    const original = await crearProducto({ cantidad: 6 });
+    const nombre = `Polera Editada ${randomUUID().slice(0, 8)}`;
+
+    const { status, cuerpo } = await editar(original.idVariante, { nombre: `  ${nombre} `, banda: 'Slayer', talla: 'XL', color: 'Rojo', imagen: OTRA_FOTO });
+
+    expect(status).toBe(200);
+    expect(cuerpo).toEqual({ ...original, producto: nombre, banda: 'Slayer', talla: 'XL', color: 'Rojo', imagenUrl: OTRA_FOTO });
+    // Lo que identifica a la prenda y su stock no cambian con la edición.
+    expect(cuerpo).toMatchObject({ sku: original.sku, codigo: original.codigo, codigoUbicacion: original.codigoUbicacion, disponible: 6 });
+    expect((await obtener<VarianteStock>(`/inventario/variantes/por-codigo/${original.sku}`)).cuerpo).toEqual(cuerpo);
+    expect((await obtener<string[]>('/inventario/colores')).cuerpo).toContain('Rojo');
+  });
+
+  it('solo cambia los campos enviados', async () => {
+    const original = await crearProducto({ banda: 'Metallica', talla: 'S' });
+
+    const { cuerpo } = await editar(original.idVariante, { color: 'Negro' });
+    expect(cuerpo).toEqual(original);
+    expect((await editar(original.idVariante, { banda: null })).cuerpo).toEqual({ ...original, banda: null });
+  });
+
+  it('el nombre, la banda y la foto cambian para todas las tallas del producto', async () => {
+    const m = await crearProducto({ talla: 'M' });
+    const l = await crearProducto({ nombre: m.producto, talla: 'L' });
+    const nombre = `Polera Renombrada ${randomUUID().slice(0, 8)}`;
+
+    await editar(m.idVariante, { nombre, banda: 'Iron Maiden', imagen: OTRA_FOTO, talla: 'S' });
+
+    const otraTalla = (await obtener<VarianteStock>(`/inventario/variantes/por-codigo/${l.sku}`)).cuerpo;
+    // La otra talla conserva lo suyo y recibe lo que es del producto.
+    expect(otraTalla).toEqual({ ...l, producto: nombre, banda: 'Iron Maiden', imagenUrl: OTRA_FOTO });
+  });
+
+  it('al cambiar de categoría recibe un espacio en la zona nueva y pierde la banda si no corresponde', async () => {
+    const talla = `T${randomUUID().slice(0, 6)}`;
+    const polera = await crearProducto({ banda: 'Metallica', talla });
+    expect(polera.codigoUbicacion).toMatch(/^B-POL-/);
+
+    const { cuerpo } = await editar(polera.idVariante, { categoria: 'pantalones', banda: 'Slayer' });
+
+    expect(cuerpo).toMatchObject({ categoria: 'Pantalones', banda: null, talla });
+    expect(cuerpo.codigoUbicacion).toMatch(/^B-PAN-\d+$/);
+    // La talla que traía pasa a ser una talla de su categoría nueva.
+    const pantalones = (await obtener<Categoria[]>('/inventario/categorias')).cuerpo.find((c) => c.nombre === 'Pantalones')!;
+    expect(pantalones.tallas).toContain(talla);
+
+    // Repetir la misma categoría no lo mueve otra vez.
+    expect((await editar(polera.idVariante, { categoria: 'Pantalones' })).cuerpo.codigoUbicacion).toBe(cuerpo.codigoUbicacion);
+  });
+
+  it('no admite el nombre de otro producto ni una talla y color que el producto ya tiene', async () => {
+    const uno = await crearProducto({ talla: 'M' });
+    const otro = await crearProducto({ talla: 'M' });
+    const hermana = await crearProducto({ nombre: uno.producto, talla: 'L' });
+
+    expect(await editar<ErrorApi>(otro.idVariante, { nombre: uno.producto.toUpperCase(), color: 'Rojo' })).toEqual({
+      status: 409,
+      cuerpo: { codigo: 'PRODUCTO_DUPLICADO', mensaje: 'Ya existe otro producto con ese nombre.' },
+    });
+    expect(await editar<ErrorApi>(hermana.idVariante, { banda: 'Slayer', talla: 'M' })).toEqual({
+      status: 409,
+      cuerpo: { codigo: 'VARIANTE_DUPLICADA', mensaje: 'El producto ya tiene esa talla y color.' },
+    });
+    // Un rechazo no deja cambios a medias: ni el color ni la banda quedaron aplicados.
+    expect((await obtener<VarianteStock>(`/inventario/variantes/por-codigo/${otro.sku}`)).cuerpo).toEqual(otro);
+    expect((await obtener<VarianteStock>(`/inventario/variantes/por-codigo/${hermana.sku}`)).cuerpo).toEqual(hermana);
+
+    // Cambiar solo mayúsculas del propio nombre sí se puede.
+    expect((await editar(uno.idVariante, { nombre: uno.producto.toUpperCase() })).cuerpo.producto).toBe(uno.producto.toUpperCase());
+  });
+
+  it.each([
+    [{ nombre: ' ' }, 'El nombre es obligatorio.'],
+    [{ categoria: '' }, 'La categoría es obligatoria.'],
+    [{ talla: ' ' }, 'La talla es obligatoria.'],
+    [{ color: '' }, 'El color es obligatorio.'],
+    [{ imagen: 'http://ejemplo/foto.jpg' }, 'La imagen no es válida.'],
+    [{}, 'No hay cambios que aplicar.'],
+    [{ precio: 100 }, 'No hay cambios que aplicar.'],
+  ])('valida los datos de la edición: %j', async (cambio, mensaje) => {
+    const { idVariante } = await crearProducto();
+    expect(await editar<ErrorApi>(idVariante, cambio)).toEqual({ status: 400, cuerpo: { codigo: 'DATOS_INVALIDOS', mensaje } });
+  });
+
+  it('solo Bodega y Gerente editan productos', async () => {
+    const { idVariante } = await crearProducto();
+    expect((await editar<ErrorApi>(idVariante, { color: 'Rojo' }, vendedor)).status).toBe(403);
+    expect((await llamar('PATCH', `/inventario/variantes/${idVariante}`, { color: 'Rojo' })).status).toBe(401);
+    expect((await editar<ErrorApi>(999999, { color: 'Rojo' })).status).toBe(404);
+  });
+});
+
 describe('movimientos', () => {
   it('un ingreso suma a la ubicación y deja un movimiento por prenda', async () => {
     const a = await crearProducto({ cantidad: 2 });

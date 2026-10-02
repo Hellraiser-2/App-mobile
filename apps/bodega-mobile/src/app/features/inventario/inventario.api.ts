@@ -12,6 +12,7 @@ import type {
   ProductoNuevoRequest,
   ResultadoMovimientos,
   TraspasoRequest,
+  VarianteEdicionRequest,
   VarianteStock,
 } from '@rockstar/contracts';
 import { Observable } from 'rxjs';
@@ -61,6 +62,11 @@ export class InventarioApi {
 
   crearProducto(datos: ProductoNuevoRequest): Observable<VarianteStock> {
     return this.http.post<VarianteStock>(`${this.url}/productos`, datos);
+  }
+
+  /** Edita una prenda. Solo cambian los campos enviados; responde la variante como quedó. */
+  editarVariante(idVariante: number, cambios: VarianteEdicionRequest): Observable<VarianteStock> {
+    return this.http.patch<VarianteStock>(`${this.url}/variantes/${idVariante}`, cambios);
   }
 
   registrarIngreso(datos: IngresoRequest): Observable<ResultadoMovimientos> {

@@ -228,3 +228,27 @@ export interface ImagenBandaRequest {
   imagen: string;
   credito?: string | null;
 }
+
+/**
+ * PATCH /inventario/variantes/:id (Bodega, Gerente)
+ *
+ * Edita una prenda. Solo cambian los campos enviados. La talla y el color son de la
+ * variante; el nombre, la categoría, la banda y la foto son de su producto, así que
+ * cambian para todas sus tallas y colores. Responde la variante como quedó.
+ *
+ * - Un nombre que ya tiene otro producto responde `409 PRODUCTO_DUPLICADO`.
+ * - Una talla y color que el producto ya tiene responde `409 VARIANTE_DUPLICADA`.
+ * - Al cambiar de categoría el producto recibe un espacio nuevo en la zona de esa
+ *   categoría, y pierde la banda si la categoría no usa bandas.
+ * - El stock no se edita aquí: cambia con ingresos, mermas, traspasos y conteos.
+ */
+export interface VarianteEdicionRequest {
+  nombre?: string;
+  categoria?: string;
+  /** `null` o vacío deja el producto sin banda. */
+  banda?: string | null;
+  talla?: string;
+  color?: string;
+  /** Foto nueva como data URL (`data:image/...;base64,...`). */
+  imagen?: string;
+}

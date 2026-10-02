@@ -166,6 +166,16 @@ export class InventarioController {
     return this.productos.editar(id, cuerpo);
   }
 
+  /**
+   * Edita una prenda desde la bodega: nombre, categoría, banda, talla, color y foto. El
+   * precio no va aquí: lo define el Gerente en la ruta de productos.
+   */
+  @Patch('variantes/:id')
+  @Roles('BODEGA', 'GERENTE')
+  editarVariante(@Param('id', ParseIntPipe) id: number, @Body() cuerpo: unknown): Promise<VarianteStock> {
+    return this.productos.editarVariante(id, cuerpo);
+  }
+
   /** Historial de movimientos, del más reciente al más antiguo. `tipo` lo limita, por ejemplo a `MERMA`. */
   @Get('movimientos')
   @Roles('BODEGA', 'GERENTE')
