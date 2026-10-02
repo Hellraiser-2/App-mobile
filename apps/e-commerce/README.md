@@ -91,7 +91,3 @@ El proyecto conserva la configuración de Capacitor, pero la app empaquetada no 
 - **Ionic 8**
 - **Capacitor 6**
 - **TypeScript 5.5**
-
-## Versión legacy
-
-La versión React original, con datos de ejemplo, está en `react-legacy/`.
