@@ -1,10 +1,12 @@
-# Rockstar en tres contenedores, uno por pieza:
+# Rockstar en cuatro contenedores, uno por pieza:
 #
-#   db   PostgreSQL
-#   api  backend en NestJS
-#   app  app de bodega, servida por nginx
+#   db      PostgreSQL
+#   api     backend en NestJS
+#   app     app de bodega, servida por nginx
+#   tienda  e-commerce, servido por nginx
 #
-#   docker compose up --build        levanta todo; la app queda en http://localhost:8080
+#   docker compose up --build        levanta todo; la app de bodega queda en
+#                                    http://localhost:8080 y la tienda en http://localhost:8081
 #   docker compose down              detiene y conserva los datos
 #   docker compose down --volumes    detiene y borra la base y las claves
 #
@@ -61,6 +63,19 @@ services:
       API_URL: http://api:3000
     ports:
       - "${APP_PUERTO:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  tienda:
+    build:
+      context: .
+      dockerfile: apps/e-commerce/Dockerfile
+    restart: unless-stopped
+    environment:
+      API_URL: http://api:3000
+    ports:
+      - "${TIENDA_PUERTO:-8081}:80"
     depends_on:
       api:
         condition: service_healthy

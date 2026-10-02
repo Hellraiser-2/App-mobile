@@ -1,10 +1,11 @@
 # Rockstar
 
-Plataforma de inventario para una tienda de ropa: app de bodega, backend y base de datos.
+Plataforma de inventario y venta para una tienda de ropa: app de bodega, tienda web, backend y base de datos.
 
 | Pieza | Carpeta | Tecnología |
 |---|---|---|
 | App de bodega | `apps/bodega-mobile` | Ionic Angular + Capacitor |
+| Tienda web | `apps/e-commerce` | Ionic Angular (dependencias propias, fuera del espacio de trabajo de npm) |
 | Backend | `services/api` | NestJS |
 | Base de datos | `db/migrations` | PostgreSQL |
 | Contratos de la API | `packages/contracts` | Tipos de TypeScript compartidos |
@@ -22,6 +23,7 @@ docker compose up --build
 | Contenedor | Qué es | Dirección |
 |---|---|---|
 | `app` | App de bodega servida por nginx | http://localhost:8080 |
+| `tienda` | Tienda web servida por nginx | http://localhost:8081 |
 | `api` | Backend | http://localhost:3000/api/v1 |
 | `db` | PostgreSQL | `localhost:5432`, solo desde este equipo |
 
@@ -31,7 +33,12 @@ Al arrancar, el backend crea las tablas y, si la base está vacía, carga datos 
 |---|---|---|
 | `bodega@rockstar.cl` | `bodega123` | Bodega. Es la única que entra a la app de bodega |
 | `vendedor@rockstar.cl` | `vendedor123` | Vendedor |
-| `gerente@rockstar.cl` | `gerente123` | Gerente |
+| `gerente@rockstar.cl` | `gerente123` | Gerente. En la tienda define el precio de los productos |
+| `cliente@rockstar.cl` | `cliente123` | Cliente. Compra en la tienda; también se puede crear una cuenta nueva |
+
+Un producto creado desde la bodega no aparece en la tienda hasta que el Gerente le pone precio: en la tienda, "Acceso administrador", pestaña Bodega, botón Editar.
+
+Los pagos y los despachos son simulados: la tienda no cobra dinero y el código de seguimiento no existe en Starken. Ambos están detrás de adaptadores (`services/api/src/pagos/pasarela.ts` y `services/api/src/logistica/transportista.ts`) que se reemplazan al tener credenciales de Transbank y de Starken.
 
 Otros comandos:
 

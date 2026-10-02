@@ -4,7 +4,7 @@
   "private": true,
   "description": "Plataforma omnicanal: bodega, POS y e-commerce sobre un inventario único",
   "workspaces": [
-    "apps/*",
+    "apps/bodega-mobile",
     "services/*",
     "packages/*"
   ]
