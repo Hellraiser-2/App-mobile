@@ -205,3 +205,26 @@ export interface ProductoEdicionRequest {
   precio?: number | null;
   descripcion?: string | null;
 }
+
+/** Banda tal como la muestra la tienda. GET /inventario/catalogo/bandas (público) */
+export interface BandaCatalogo {
+  idBanda: number;
+  nombre: string;
+  /** Dirección de la foto de la banda, que entrega el backend; `null` si aún no tiene. */
+  imagenUrl: string | null;
+  /** Autor y licencia de la foto, para mostrarlos junto a ella. */
+  credito: string | null;
+}
+
+/**
+ * PUT /inventario/bandas/imagen (Bodega, Gerente)
+ *
+ * Guarda la foto de una banda, reemplazando la anterior. Si la banda no existe, la
+ * registra. Admite JPEG, PNG y WebP de hasta 2 MB. Responde la banda.
+ */
+export interface ImagenBandaRequest {
+  banda: string;
+  /** Foto como data URL (`data:image/jpeg;base64,...`). */
+  imagen: string;
+  credito?: string | null;
+}

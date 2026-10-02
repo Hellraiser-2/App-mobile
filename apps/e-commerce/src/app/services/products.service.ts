@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
-import type { ArticuloCatalogo } from '@rockstar/contracts';
+import type { ArticuloCatalogo, BandaCatalogo } from '@rockstar/contracts';
 import { firstValueFrom } from 'rxjs';
 
 import { API_URL, errorMessage } from '../core/api';
@@ -22,8 +22,10 @@ export interface CategoryMenu {
 /** Banda con lo necesario para mostrarla como tarjeta. */
 export interface BandCard {
   name: string;
-  /** Foto de una de sus prendas. */
+  /** Foto de la banda; si aún no tiene, la de una de sus prendas. */
   image: string;
+  /** Autor y licencia de la foto de la banda, para mostrarlos junto a ella. */
+  credit: string | null;
   /** Cantidad de productos distintos de la banda. */
   products: number;
   categories: string[];
@@ -42,6 +44,8 @@ export class ProductsService {
   readonly error = signal<string | null>(null);
   /** Falso hasta que el catálogo se cargó al menos una vez. */
   readonly loaded = signal(false);
+  /** Fotos de las bandas que guarda el backend, por nombre de banda. */
+  private readonly bandPhotos = signal(new Map<string, { image: string; credit: string | null }>());
 
   /** Categorías que tienen al menos una prenda publicada, en orden alfabético. */
   readonly categories = computed(() => [...new Set(this.productsSig().map((p) => p.category))].sort(byName));
@@ -70,9 +74,26 @@ export class ProductsService {
       card.categories.add(product.category);
       cards.set(product.band, card);
     }
+    const photos = this.bandPhotos();
     return [...cards]
-      .map(([name, card]) => ({ name, image: card.image, products: card.products.size, categories: [...card.categories].sort(byName) }))
+      .map(([name, card]) => ({
+        name,
+        image: photos.get(name)?.image ?? card.image,
+        credit: photos.get(name)?.credit ?? null,
+        products: card.products.size,
+        categories: [...card.categories].sort(byName),
+      }))
       .sort((a, b) => byName(a.name, b.name));
+  }
+
+  /** Trae las fotos de las bandas. Si falla, las bandas se muestran con la foto de una de sus prendas. */
+  private async loadBandPhotos(): Promise<void> {
+    try {
+      const bandas = await firstValueFrom(this.http.get<BandaCatalogo[]>(`${API_URL}/inventario/catalogo/bandas`));
+      this.bandPhotos.set(new Map(bandas.flatMap((b) => (b.imagenUrl ? [[b.nombre, { image: b.imagenUrl, credit: b.credito }] as const] : []))));
+    } catch {
+      // Sin fotos de bandas la tienda funciona igual.
+    }
   }
 
   /** Trae el catálogo actual. La disponibilidad cambia con cada venta, así que se pide al entrar a cada pantalla. */
@@ -80,7 +101,10 @@ export class ProductsService {
     this.loading.set(true);
     this.error.set(null);
     try {
-      const catalogo = await firstValueFrom(this.http.get<ArticuloCatalogo[]>(`${API_URL}/inventario/catalogo`));
+      const [catalogo] = await Promise.all([
+        firstValueFrom(this.http.get<ArticuloCatalogo[]>(`${API_URL}/inventario/catalogo`)),
+        this.loadBandPhotos(),
+      ]);
       this.productsSig.set(catalogo.map(toProduct));
       this.loaded.set(true);
     } catch (error) {

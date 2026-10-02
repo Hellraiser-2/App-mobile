@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Header, Param, ParseIntPipe, Patch, Post, Put, Query, StreamableFile } from '@nestjs/common';
 import type {
   ArticuloCatalogo,
+  BandaCatalogo,
   Busqueda,
   Categoria,
   Movimiento,
@@ -14,6 +15,7 @@ import { Publica, Roles, UsuarioActual } from '../auth/decoradores.js';
 import { noEncontrado } from '../comun/errores.js';
 import { patronLike } from '../comun/texto.js';
 import { BaseDeDatos } from '../db/base-de-datos.js';
+import { BandasService } from './bandas.service.js';
 import { BusquedasService } from './busquedas.service.js';
 import { CatalogosService } from './catalogos.service.js';
 import { articulosDeCatalogo, historialDeMovimientos, variantesConStock, variantesDeGestion } from './consultas.js';
@@ -32,6 +34,7 @@ export class InventarioController {
     private readonly productos: ProductosService,
     private readonly movimientos: MovimientosService,
     private readonly busquedas: BusquedasService,
+    private readonly bandasConFoto: BandasService,
   ) {}
 
   // --- Tienda web ---
@@ -41,6 +44,26 @@ export class InventarioController {
   @Publica()
   catalogo(): Promise<ArticuloCatalogo[]> {
     return articulosDeCatalogo(this.db);
+  }
+
+  /** Las bandas con la dirección de su foto, para la página de bandas de la tienda. */
+  @Get('catalogo/bandas')
+  @Publica()
+  bandasDeCatalogo(): Promise<BandaCatalogo[]> {
+    return this.bandasConFoto.listar();
+  }
+
+  /**
+   * La foto de una banda. Su dirección cambia cuando cambia la foto, así que el navegador
+   * puede guardarla indefinidamente. `nosniff` impide que se interprete como otra cosa.
+   */
+  @Get('catalogo/bandas/:id/imagen')
+  @Publica()
+  @Header('Cache-Control', 'public, max-age=31536000, immutable')
+  @Header('X-Content-Type-Options', 'nosniff')
+  async imagenDeBanda(@Param('id', ParseIntPipe) id: number): Promise<StreamableFile> {
+    const { bytes, tipo } = await this.bandasConFoto.imagen(id);
+    return new StreamableFile(bytes, { type: tipo, length: bytes.length });
   }
 
   // --- Consulta de stock ---
@@ -88,6 +111,13 @@ export class InventarioController {
   @Roles('BODEGA', 'GERENTE')
   crearBanda(@Body('nombre') nombre: unknown): Promise<string[]> {
     return this.catalogos.agregar('bandas', nombre);
+  }
+
+  /** Guarda la foto de una banda; si la banda no existe, la registra. */
+  @Put('bandas/imagen')
+  @Roles('BODEGA', 'GERENTE')
+  guardarImagenDeBanda(@Body() cuerpo: unknown): Promise<BandaCatalogo> {
+    return this.bandasConFoto.guardarImagen(cuerpo);
   }
 
   @Get('colores')

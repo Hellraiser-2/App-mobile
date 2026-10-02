@@ -29,6 +29,7 @@ Las tablas se definen en `db/migrations`, en archivos numerados. El backend apli
 | `007_logistica_completo` | Solicitudes de despacho, tarifas guardadas y de respaldo, cola de despachos pendientes |
 | `008_comunas` | Las 346 comunas de Chile |
 | `009_integridad_ventas` | Claves foráneas de reservas y movimientos hacia la venta |
+| `010_imagenes_bandas` | Foto de cada banda, con su tipo, su huella y su crédito |
 
 Una migración ya aplicada no se modifica: un cambio al modelo es siempre un archivo nuevo.
 
@@ -159,6 +160,10 @@ erDiagram
     integer id_banda PK
     text nombre
     text clave
+    bytea imagen
+    text imagen_tipo
+    text imagen_huella
+    text imagen_credito
   }
   busquedas {
     bigint id_busqueda PK

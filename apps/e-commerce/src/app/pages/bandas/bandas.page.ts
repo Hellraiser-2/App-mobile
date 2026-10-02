@@ -39,6 +39,7 @@ import { ProductsService } from '../../services/products.service';
                 {{ band.products }} {{ band.products === 1 ? 'producto' : 'productos' }}
                 <span *ngIf="!category()"> · {{ band.categories.join(', ') }}</span>
               </p>
+              <p class="credit" *ngIf="band.credit">{{ band.credit }}</p>
             </div>
           </a>
         </div>
@@ -76,6 +77,7 @@ import { ProductsService } from '../../services/products.service';
     .band-body { padding: 14px; }
     .band-body h2 { margin: 0 0 4px; font-size: 18px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; }
     .band-body p { margin: 0; font-size: 12px; color: var(--text-faint); }
+    .band-body .credit { margin-top: 8px; font-size: 9px; line-height: 1.3; opacity: 0.75; }
     .empty { text-align: center; padding: 40px 20px; color: var(--text-faint); }
   `],
 })

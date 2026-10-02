@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/services/api/src/main.js",
     "local": "npm run build && node test/entorno-local.mjs",
+    "semilla:bandas": "node scripts/cargar-bandas.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --config vitest.config.mts",
     "test:e2e": "npm run build && vitest run --config vitest.e2e.config.mts"

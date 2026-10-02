@@ -36,6 +36,15 @@ Al arrancar, el backend crea las tablas y, si la base está vacía, carga datos 
 | `gerente@rockstar.cl` | `gerente123` | Gerente. En la tienda define el precio de los productos |
 | `cliente@rockstar.cl` | `cliente123` | Cliente. Compra en la tienda; también se puede crear una cuenta nueva |
 
+**Catálogo de bandas.** Con el sistema arriba, este comando carga las fotos de 17 bandas y 19 productos de muestra de bandas conocidas. Se puede repetir: no duplica nada.
+
+```
+cd services/api
+npm run semilla:bandas
+```
+
+Las fotos de las bandas son reales, de Wikimedia Commons con licencia libre; sus autores y licencias están en `db/semillas/bandas/CREDITOS.md`. Los productos son de muestra y su imagen es una ilustración, no una foto de la prenda.
+
 Un producto creado desde la bodega no aparece en la tienda hasta que el Gerente le pone precio: en la tienda, "Acceso administrador", pestaña Bodega, botón Editar.
 
 Los pagos y los despachos son simulados: la tienda no cobra dinero y el código de seguimiento no existe en Starken. Ambos están detrás de adaptadores (`services/api/src/pagos/pasarela.ts` y `services/api/src/logistica/transportista.ts`) que se reemplazan al tener credenciales de Transbank y de Starken.
