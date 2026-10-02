@@ -23,6 +23,7 @@ import { Observable, firstValueFrom, forkJoin } from 'rxjs';
 
 import { EnvioIdempotente } from '../../core/api/envio-idempotente';
 import { mensajeDeError } from '../../core/api/errores';
+import { CodigoQrComponent } from '../../shared/codigo-qr.component';
 import { EstadoEnvioComponent } from '../../shared/estado-envio.component';
 import { UBICACIONES, enteroDesdeTexto, etiquetaUbicacion, valorDeEvento } from '../../shared/formato';
 import { ImagenPrendaComponent } from '../../shared/imagen-prenda.component';
@@ -42,6 +43,7 @@ const mismoNombre = (a: string, b: string) => a.trim().localeCompare(b.trim(), '
 @Component({
   selector: 'app-producto-nuevo',
   imports: [
+    CodigoQrComponent,
     EstadoEnvioComponent,
     ImagenPrendaComponent,
     SelectorConNuevoComponent,
@@ -94,15 +96,25 @@ const mismoNombre = (a: string, b: string) => a.trim().localeCompare(b.trim(), '
               </div>
             </div>
           </div>
-          <dl class="rs-datos codigos">
+          <!-- El servicio le asignó un espacio en la bodega: esta es su etiqueta. -->
+          <div class="espacio">
+            <app-codigo-qr [texto]="variante.codigoUbicacion" style="--tamano: 104px"></app-codigo-qr>
             <div>
-              <dt>SKU</dt>
-              <dd>{{ variante.sku }}</dd>
+              <p class="rotulo">Espacio asignado en la bodega</p>
+              <p class="numero">{{ variante.codigoUbicacion }}</p>
+              <ion-button fill="outline" size="small" (click)="verEtiqueta(variante.codigoUbicacion)">Ver etiqueta</ion-button>
             </div>
-            <div class="rs-destacado">
-              <dt>Código de ubicación</dt>
-              <dd>{{ variante.codigoUbicacion }}</dd>
+          </div>
+          <!-- Y esta es la etiqueta de la prenda, la que se lee al contarla o venderla. -->
+          <div class="espacio">
+            <app-codigo-qr [texto]="variante.sku" style="--tamano: 104px"></app-codigo-qr>
+            <div>
+              <p class="rotulo">Etiqueta de la prenda (SKU)</p>
+              <p class="numero">{{ variante.sku }}</p>
+              <ion-button fill="outline" size="small" (click)="verEtiquetaDePrenda(variante.sku)">Ver etiqueta</ion-button>
             </div>
+          </div>
+          <dl class="rs-datos codigos">
             <div>
               <dt>Código de barras</dt>
               <dd>{{ variante.codigo }}</dd>
@@ -244,10 +256,28 @@ const mismoNombre = (a: string, b: string) => a.trim().localeCompare(b.trim(), '
   styles: `
     .foto,
     .resumen,
-    .logro {
+    .logro,
+    .espacio {
       display: flex;
       align-items: center;
       gap: 14px;
+    }
+    .espacio {
+      margin-bottom: 12px;
+    }
+    .espacio p {
+      margin: 0;
+    }
+    .rotulo {
+      color: var(--rs-tenue);
+      font-size: 0.8rem;
+    }
+    .numero {
+      color: var(--ion-color-primary);
+      font-family: var(--rs-fuente-titulo);
+      font-size: 2rem;
+      font-weight: 600;
+      line-height: 1.2;
     }
     .foto {
       padding: 14px;
@@ -512,6 +542,15 @@ export class ProductoNuevoPage {
   }
 
   /** Vuelve a la pantalla de ingreso dejando el formulario limpio. */
+  /** Abre la etiqueta QR del espacio, lista para imprimir. El producto creado sigue en pantalla al volver. */
+  async verEtiqueta(codigo: string): Promise<void> {
+    await this.navegacion.navigateForward('/espacios', { queryParams: { codigo } });
+  }
+
+  async verEtiquetaDePrenda(sku: string): Promise<void> {
+    await this.navegacion.navigateForward('/etiquetas', { queryParams: { sku } });
+  }
+
   async volver(): Promise<void> {
     this.otro();
     await this.navegacion.navigateBack('/ingreso');

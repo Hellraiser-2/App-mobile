@@ -438,7 +438,9 @@ export class BackendSimulado {
     const consulta = texto.trim().toLowerCase();
     return this.variantes
       .filter((v) =>
-        [v.sku, v.producto, v.categoria, v.banda ?? ''].some((campo) => campo.toLowerCase().includes(consulta)),
+        [v.sku, v.producto, v.categoria, v.banda ?? '', v.codigoUbicacion].some((campo) =>
+          campo.toLowerCase().includes(consulta),
+        ),
       )
       .map((v) => this.vista(v));
   }

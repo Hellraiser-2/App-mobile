@@ -8,6 +8,7 @@ import {
   IonHeader,
   IonIcon,
   IonRouterLink,
+  IonText,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular';
@@ -17,7 +18,9 @@ import {
   chevronForward,
   clipboardOutline,
   downloadOutline,
+  gridOutline,
   logOutOutline,
+  pricetagOutline,
   qrCodeOutline,
   swapHorizontalOutline,
   timerOutline,
@@ -26,6 +29,7 @@ import {
 import { firstValueFrom } from 'rxjs';
 
 import { mensajeDeError } from '../../core/api/errores';
+import { ServidorService } from '../../core/api/servidor.service';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { GRUPOS_DE_ENVIO, agruparEnvios } from '../envios/envios';
 import { LogisticaApi } from '../envios/logistica.api';
@@ -49,6 +53,7 @@ interface Opcion {
     IonHeader,
     IonIcon,
     IonRouterLink,
+    IonText,
     IonTitle,
     IonToolbar,
     RouterLink,
@@ -72,6 +77,11 @@ interface Opcion {
           <span class="rs-chip rs-chip--acento">{{ rol }}</span>
         }
       </section>
+      @if (servidor.modoDemo()) {
+        <ion-text color="warning">
+          <p role="status">Modo demostración: son datos de ejemplo y lo que registres no llega a la base de datos.</p>
+        </ion-text>
+      }
 
       <ion-card button routerLink="/envios" class="envios">
         <div class="envios-cabecera">
@@ -204,6 +214,7 @@ interface Opcion {
 })
 export class InicioPage {
   protected readonly sesion = inject(SesionService);
+  protected readonly servidor = inject(ServidorService);
   private readonly router = inject(Router);
   private readonly logistica = inject(LogisticaApi);
 
@@ -250,6 +261,20 @@ export class InicioPage {
       icono: 'timer-outline',
       tono: '255, 159, 67',
     },
+    {
+      ruta: '/espacios',
+      titulo: 'Espacios de bodega',
+      detalle: 'Etiquetas QR con el número de cada espacio',
+      icono: 'grid-outline',
+      tono: '45, 212, 191',
+    },
+    {
+      ruta: '/etiquetas',
+      titulo: 'Etiquetas de prendas',
+      detalle: 'QR de cada SKU para contar y vender',
+      icono: 'pricetag-outline',
+      tono: '244, 114, 182',
+    },
   ];
 
   /** `null` mientras los pedidos aún no se han cargado. */
@@ -268,7 +293,9 @@ export class InicioPage {
       chevronForward,
       clipboardOutline,
       downloadOutline,
+      gridOutline,
       logOutOutline,
+      pricetagOutline,
       qrCodeOutline,
       swapHorizontalOutline,
       timerOutline,

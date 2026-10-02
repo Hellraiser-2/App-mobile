@@ -7,7 +7,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "lint": "ng lint"
+    "lint": "ng lint",
+    "apk": "node scripts/apk.mjs"
   },
   "private": true,
   "dependencies": {
@@ -30,6 +31,7 @@
     "@ionic/angular": "^9.0.0",
     "@rockstar/contracts": "*",
     "ionicons": "^8.1.0",
+    "qrcode-generator": "^2.0.4",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

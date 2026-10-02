@@ -65,6 +65,52 @@ describe('BuscadorVarianteComponent', () => {
     expect(buscador['resultados']().map((v) => v.sku)).toEqual(['RS-0001', 'RS-0002']);
   });
 
+  it('busca por el código del espacio de bodega', async () => {
+    await buscador.buscar('b-pol-02');
+
+    expect(buscador['resultados']().map((v) => v.producto)).toEqual(['Polera Eddie']);
+  });
+
+  describe('al escanear la etiqueta de un espacio', () => {
+    it('ofrece las tallas y colores guardados en ese espacio', async () => {
+      entorno.escaner.resultado = { estado: 'leido', codigo: 'B-POL-01' };
+
+      await buscador.escanear();
+
+      expect(seleccionadas).toEqual([]);
+      expect(buscador['resultados']().map((v) => v.sku)).toEqual(['RS-0001', 'RS-0002']);
+      expect(buscador.aviso()).toBe('Espacio B-POL-01: elige la talla y el color.');
+    });
+
+    it('elige la prenda directamente cuando el espacio guarda una sola', async () => {
+      entorno.escaner.resultado = { estado: 'leido', codigo: 'b-cha-01' };
+
+      await buscador.escanear();
+
+      expect(seleccionadas.map((v) => v.sku)).toEqual(['RS-0003']);
+      expect(buscador.aviso()).toBeNull();
+    });
+
+    it('avisa cuando el espacio no tiene productos', async () => {
+      entorno.escaner.resultado = { estado: 'leido', codigo: 'B-POL-99' };
+
+      await buscador.escanear();
+
+      expect(seleccionadas).toEqual([]);
+      expect(buscador.aviso()).toBe('El espacio B-POL-99 no tiene productos registrados.');
+    });
+
+    it('no confunde un espacio con otro cuyo código empieza igual', async () => {
+      // B-POL-0 es prefijo de B-POL-01, 02 y 03, pero no es el código de ninguno.
+      entorno.escaner.resultado = { estado: 'leido', codigo: 'B-POL-0' };
+
+      await buscador.escanear();
+
+      expect(seleccionadas).toEqual([]);
+      expect(buscador.aviso()).toBe('El espacio B-POL-0 no tiene productos registrados.');
+    });
+  });
+
   it('indica cuando la búsqueda no encuentra productos', async () => {
     await buscador.buscar('inexistente');
 

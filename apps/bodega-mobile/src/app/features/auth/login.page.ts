@@ -5,14 +5,16 @@ import { addIcons } from 'ionicons';
 import { flash } from 'ionicons/icons';
 
 import { mensajeDeError } from '../../core/api/errores';
+import { ServidorService } from '../../core/api/servidor.service';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { valorDeEvento } from '../../shared/formato';
+import { ConexionComponent } from './conexion.component';
 
 const FORMATO_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 @Component({
   selector: 'app-login',
-  imports: [IonButton, IonContent, IonIcon, IonInput, IonInputPasswordToggle, IonText],
+  imports: [ConexionComponent, IonButton, IonContent, IonIcon, IonInput, IonInputPasswordToggle, IonText],
   template: `
     <ion-content>
       <div class="marco">
@@ -64,6 +66,9 @@ const FORMATO_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             {{ enviando() ? 'Ingresando…' : 'Iniciar sesión' }}
           </ion-button>
         </form>
+        @if (servidor.configurable) {
+          <app-conexion></app-conexion>
+        }
         <p class="pie">Inventario único para bodega y sala de ventas</p>
       </div>
     </ion-content>
@@ -133,6 +138,7 @@ const FORMATO_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 })
 export class LoginPage {
   protected readonly sesion = inject(SesionService);
+  protected readonly servidor = inject(ServidorService);
   private readonly router = inject(Router);
 
   readonly email = signal('');

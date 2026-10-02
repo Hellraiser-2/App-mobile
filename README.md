@@ -81,7 +81,55 @@ cd apps/bodega-mobile
 npm start
 ```
 
-Para que use la API real, cambia `useMockApi` a `false` y ajusta `apiUrl` en `src/environments/environment.ts`. En un teléfono, `apiUrl` debe llevar la IP del equipo donde corre el backend, no `localhost`.
+Para que use la API real, pulsa "Modo demostración" bajo el botón de inicio de sesión, elige "Servidor" y escribe la dirección del backend, por ejemplo `http://localhost:3000`.
+
+## Etiquetas QR de los espacios de bodega
+
+La pantalla "Espacios de bodega" muestra el código QR de cada espacio con su número, por ejemplo `B-POL-03`. Para imprimirlas, abre la app en el navegador del computador (http://localhost:8080), entra a esa pantalla y usa "Imprimir etiquetas". Salen tres por fila, con línea de corte.
+
+Al escanear una etiqueta desde la app, en cualquier pantalla con el botón "Escanear código", aparecen las prendas guardadas en ese espacio.
+
+## Etiquetas QR de las prendas
+
+La pantalla "Etiquetas de prendas" muestra el código QR de cada SKU, con el nombre, la talla y el color. Se imprimen igual que las de los espacios, desde el navegador del computador. Al abrir una prenda se puede imprimir una etiqueta por cada unidad en stock, para rotularlas todas.
+
+El QR contiene el SKU. Al escanearlo, la app identifica la talla y el color exactos de la prenda para contarla, moverla o darla de baja.
+
+## Dos direcciones distintas de la app en el navegador
+
+- http://localhost:8080 es la app de Docker: usa el backend y la base de datos reales.
+- http://localhost:4200 es el servidor de desarrollo (`npm start`): arranca en modo demostración, con datos de ejemplo que no llegan a la base. La pantalla principal lo avisa. Para conectarlo al backend, pulsa "Modo demostración" en el inicio de sesión, elige "Servidor" y escribe `http://localhost:3000`.
+
+## APK para el teléfono
+
+```
+cd apps/bodega-mobile
+npm run apk
+```
+
+El APK queda en `apps/bodega-mobile/apk/rockstar-bodega.apk`. Cópialo al teléfono y ábrelo para instalarlo; Android pedirá permitir la instalación desde esa fuente.
+
+Para que la app instalada funcione contra el backend:
+
+1. Los contenedores deben estar corriendo en el equipo (`docker compose up -d`).
+2. El teléfono debe estar en la misma red Wi-Fi que el equipo.
+3. La app sale configurada con la dirección que el equipo tenía al compilar. Si cambió, pulsa "Servidor" bajo el botón de inicio de sesión y escribe la nueva, por ejemplo `http://192.168.1.20:3000`. La dirección del equipo se ve con `ipconfig`, en "Dirección IPv4".
+
+Sin servidor a mano, la misma pantalla permite pasar a "Demostración", que funciona sola con datos de ejemplo.
+
+Otras formas de compilar:
+
+```
+npm run apk -- --servidor=http://192.168.1.20:3000   # otra dirección inicial
+npm run apk -- --demo                                 # arranca en modo demostración
+```
+
+Requisitos para compilar, una sola vez por equipo:
+
+- JDK 21. Si el Java del sistema es más antiguo, indica el JDK en `%USERPROFILE%\.gradle\gradle.properties` con `org.gradle.java.home=<ruta del JDK>`.
+- SDK de Android con la plataforma 36, y su ruta en `apps/bodega-mobile/android/local.properties` como `sdk.dir=<ruta>` o en la variable `ANDROID_HOME`.
+
+El APK es de depuración: sirve para instalarlo directamente, no para publicarlo en una tienda. La app habla con el backend por HTTP sin cifrar, lo que es aceptable dentro de la red de la tienda y no fuera de ella.
 
 ## Pruebas
 

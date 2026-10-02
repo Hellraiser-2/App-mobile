@@ -8,6 +8,7 @@ import { firstValueFrom } from 'rxjs';
 import { codigoDeError, mensajeDeError } from '../../core/api/errores';
 import { nombreVariante, valorDeEvento } from '../../shared/formato';
 import { ImagenPrendaComponent } from '../../shared/imagen-prenda.component';
+import { esCodigoDeEspacio } from '../espacios/espacios';
 import { InventarioApi } from '../inventario/inventario.api';
 import { EscanerService } from './escaner.service';
 
@@ -33,7 +34,7 @@ import { EscanerService } from './escaner.service';
       </ion-text>
     }
     <ion-searchbar
-      placeholder="Buscar por SKU o nombre"
+      placeholder="SKU, nombre o espacio"
       [debounce]="300"
       [value]="texto()"
       (ionInput)="buscar(valor($event))"
@@ -129,6 +130,10 @@ export class BuscadorVarianteComponent {
 
   private async resolverCodigo(codigo: string): Promise<void> {
     try {
+      if (esCodigoDeEspacio(codigo)) {
+        await this.resolverEspacio(codigo.trim());
+        return;
+      }
       this.seleccionada.emit(await firstValueFrom(this.api.variantePorCodigo(codigo)));
     } catch (error) {
       this.aviso.set(
@@ -136,6 +141,25 @@ export class BuscadorVarianteComponent {
           ? `El código ${codigo} no está registrado.`
           : mensajeDeError(error),
       );
+    }
+  }
+
+  /**
+   * La etiqueta escaneada es la de un espacio de la bodega, no la de una prenda: se
+   * muestran las tallas y colores guardados ahí. Si hay una sola, queda elegida.
+   */
+  private async resolverEspacio(codigo: string): Promise<void> {
+    const encontradas = await firstValueFrom(this.api.buscarVariantes(codigo));
+    const delEspacio = encontradas.filter((variante) => variante.codigoUbicacion.toLowerCase() === codigo.toLowerCase());
+    if (delEspacio.length === 0) {
+      this.aviso.set(`El espacio ${codigo} no tiene productos registrados.`);
+    } else if (delEspacio.length === 1) {
+      this.seleccionada.emit(delEspacio[0]);
+    } else {
+      this.texto.set(codigo);
+      this.resultados.set(delEspacio);
+      this.sinResultados.set(false);
+      this.aviso.set(`Espacio ${codigo}: elige la talla y el color.`);
     }
   }
 }

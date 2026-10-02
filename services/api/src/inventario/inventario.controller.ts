@@ -27,7 +27,10 @@ export class InventarioController {
 
   // --- Consulta de stock ---
 
-  /** Búsqueda por SKU, producto, categoría o banda. Sin texto, lista todas las variantes con su stock. */
+  /**
+   * Búsqueda por SKU, producto, categoría, banda o código del espacio de bodega.
+   * Sin texto, lista todas las variantes con su stock.
+   */
   @Get('variantes')
   @Roles('VENDEDOR', 'BODEGA', 'GERENTE')
   buscarVariantes(@Query('q') q?: string): Promise<VarianteStock[]> {
@@ -38,7 +41,8 @@ export class InventarioController {
     return variantesConStock(
       this.db,
       `WHERE v.sku ILIKE $1 ESCAPE '\\' OR p.nombre ILIKE $1 ESCAPE '\\'
-          OR c.nombre ILIKE $1 ESCAPE '\\' OR b.nombre ILIKE $1 ESCAPE '\\'`,
+          OR c.nombre ILIKE $1 ESCAPE '\\' OR b.nombre ILIKE $1 ESCAPE '\\'
+          OR p.codigo_ubicacion ILIKE $1 ESCAPE '\\'`,
       [patronLike(consulta)],
     );
   }

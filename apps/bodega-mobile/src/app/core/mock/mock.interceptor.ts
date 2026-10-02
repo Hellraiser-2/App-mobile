@@ -3,13 +3,14 @@ import { inject } from '@angular/core';
 import { defer, delay, of, throwError } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
+import { ServidorService } from '../api/servidor.service';
 import { BackendSimulado } from './backend-simulado';
 
 const DEMORA_MS = 150;
 
-/** Responde las solicitudes a la API con el backend simulado cuando `useMockApi` está activo. */
+/** Responde las solicitudes a la API con el backend simulado mientras la app está en modo demostración. */
 export const mockInterceptor: HttpInterceptorFn = (solicitud, next) => {
-  if (!environment.useMockApi || !solicitud.url.startsWith(environment.apiUrl)) {
+  if (!inject(ServidorService).modoDemo() || !solicitud.url.startsWith(environment.apiUrl)) {
     return next(solicitud);
   }
   const backend = inject(BackendSimulado);

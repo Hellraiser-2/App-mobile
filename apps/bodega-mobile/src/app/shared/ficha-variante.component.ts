@@ -1,8 +1,9 @@
 import { Component, input } from '@angular/core';
-import { IonBadge, IonCard, IonIcon } from '@ionic/angular';
+import { RouterLink } from '@angular/router';
+import { IonBadge, IonCard, IonIcon, IonRouterLinkWithHref } from '@ionic/angular';
 import type { VarianteStock } from '@rockstar/contracts';
 import { addIcons } from 'ionicons';
-import { locationOutline } from 'ionicons/icons';
+import { locationOutline, qrCodeOutline } from 'ionicons/icons';
 
 import { etiquetaUbicacion } from './formato';
 import { ImagenPrendaComponent } from './imagen-prenda.component';
@@ -10,7 +11,7 @@ import { ImagenPrendaComponent } from './imagen-prenda.component';
 /** Datos de una variante con sus existencias por ubicación. */
 @Component({
   selector: 'app-ficha-variante',
-  imports: [ImagenPrendaComponent, IonBadge, IonCard, IonIcon],
+  imports: [ImagenPrendaComponent, IonBadge, IonCard, IonIcon, IonRouterLinkWithHref, RouterLink],
   template: `
     <ion-card>
       <div class="encabezado">
@@ -20,7 +21,18 @@ import { ImagenPrendaComponent } from './imagen-prenda.component';
           style="--tamano: 92px"
         ></app-imagen-prenda>
         <div>
-          <p class="sku">{{ variante().sku }} · {{ variante().codigo }}</p>
+          <p class="sku">
+            <!-- El SKU lleva a la etiqueta QR de la prenda. -->
+            <a
+              routerLink="/etiquetas"
+              [queryParams]="{ sku: variante().sku }"
+              [attr.aria-label]="'Ver la etiqueta QR de ' + variante().sku"
+            >
+              {{ variante().sku }}
+              <ion-icon name="qr-code-outline" aria-hidden="true"></ion-icon>
+            </a>
+            · {{ variante().codigo }}
+          </p>
           <h2>{{ variante().producto }}</h2>
           <div class="rs-chips">
             <span class="rs-chip">{{ variante().categoria }}</span>
@@ -36,7 +48,16 @@ import { ImagenPrendaComponent } from './imagen-prenda.component';
         <span>
           <ion-icon name="location-outline" aria-hidden="true"></ion-icon>
           Ubicación en bodega
-          <strong class="rs-codigo">{{ variante().codigoUbicacion }}</strong>
+          <!-- El código lleva a la etiqueta QR de ese espacio. -->
+          <a
+            class="rs-codigo"
+            routerLink="/espacios"
+            [queryParams]="{ codigo: variante().codigoUbicacion }"
+            [attr.aria-label]="'Ver la etiqueta QR del espacio ' + variante().codigoUbicacion"
+          >
+            {{ variante().codigoUbicacion }}
+            <ion-icon name="qr-code-outline" aria-hidden="true"></ion-icon>
+          </a>
         </span>
         @if (variante().activo) {
           <ion-badge color="success">Activo</ion-badge>
@@ -103,6 +124,19 @@ import { ImagenPrendaComponent } from './imagen-prenda.component';
       color: var(--ion-color-primary);
       font-size: 18px;
     }
+    a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+    .ubicacion a ion-icon {
+      font-size: 15px;
+    }
+    .sku a {
+      color: var(--ion-color-primary);
+      font-weight: 600;
+    }
   `,
 })
 export class FichaVarianteComponent {
@@ -111,6 +145,6 @@ export class FichaVarianteComponent {
   protected readonly etiqueta = etiquetaUbicacion;
 
   constructor() {
-    addIcons({ locationOutline });
+    addIcons({ locationOutline, qrCodeOutline });
   }
 }

@@ -431,3 +431,112 @@ ion-card p[role],
   font-size: 0.9rem;
   line-height: 1.45;
 }
+
+/* ---------- Etiquetas de los espacios de bodega ---------- */
+
+/* Una etiqueta es siempre negro sobre blanco: se imprime y se escanea. */
+.rs-etiqueta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 16px;
+  border-radius: var(--rs-radio);
+  background: #fff;
+  color: #111;
+  text-align: center;
+}
+
+.rs-etiqueta-codigo {
+  margin: 6px 0 0;
+  font-family: var(--rs-fuente-titulo);
+  font-size: 2.4rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.rs-etiqueta-producto {
+  margin: 0;
+  color: #444;
+  font-size: 0.95rem;
+}
+
+.rs-etiqueta-detalle {
+  margin: 0;
+  color: #111;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* La hoja con varias etiquetas y la copia para imprimir no se ven en pantalla. */
+.rs-etiquetas,
+.rs-impresion {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 10mm;
+  }
+
+  /* Ionic fija el documento al alto de la pantalla; al imprimir debe fluir en varias páginas. */
+  html,
+  body {
+    position: static !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  ion-app {
+    display: none !important;
+  }
+
+  .rs-impresion {
+    display: block;
+  }
+
+  .rs-impresion .rs-etiquetas {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* Borde punteado como guía de corte. */
+  .rs-impresion .rs-etiqueta {
+    padding: 6mm 3mm;
+    border: 1px dashed #999;
+    border-radius: 0;
+    break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .rs-impresion app-codigo-qr {
+    --tamano: 36mm;
+    border-radius: 0;
+  }
+
+  .rs-impresion .rs-etiqueta-codigo {
+    font-size: 20pt;
+  }
+
+  .rs-impresion .rs-etiqueta-producto,
+  .rs-impresion .rs-etiqueta-detalle {
+    font-size: 9pt;
+  }
+
+  /* Una sola etiqueta: más grande, para una repisa. */
+  .rs-impresion > .rs-etiqueta {
+    width: 80mm;
+    margin: 0 auto;
+  }
+
+  .rs-impresion > .rs-etiqueta app-codigo-qr {
+    --tamano: 56mm;
+  }
+
+  .rs-impresion > .rs-etiqueta .rs-etiqueta-codigo {
+    font-size: 30pt;
+  }
+}

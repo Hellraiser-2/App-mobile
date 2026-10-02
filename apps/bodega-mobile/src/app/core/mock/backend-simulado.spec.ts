@@ -50,6 +50,11 @@ describe('BackendSimulado', () => {
     expect(porBanda.map((v) => [v.sku, v.banda])).toEqual([['RS-0005', 'Metallica']]);
     const porCategoria = backend.manejar('GET', '/inventario/variantes?q=pantalones', null, token).body as VarianteStock[];
     expect(porCategoria.map((v) => [v.sku, v.categoria])).toEqual([['RS-0004', 'Pantalones']]);
+    const porEspacio = backend.manejar('GET', '/inventario/variantes?q=b-pol-01', null, token).body as VarianteStock[];
+    expect(porEspacio.map((v) => [v.sku, v.codigoUbicacion])).toEqual([
+      ['RS-0001', 'B-POL-01'],
+      ['RS-0002', 'B-POL-01'],
+    ]);
   });
 
   it('entrega la misma foto para todas las variantes de un producto', () => {

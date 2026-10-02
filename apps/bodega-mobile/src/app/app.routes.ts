@@ -45,6 +45,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/busqueda/busqueda.page').then((m) => m.BusquedaPage),
       },
       {
+        path: 'espacios',
+        loadComponent: () => import('./features/espacios/espacios.page').then((m) => m.EspaciosPage),
+      },
+      {
+        path: 'etiquetas',
+        loadComponent: () => import('./features/etiquetas/etiquetas.page').then((m) => m.EtiquetasPage),
+      },
+      {
         path: 'envios',
         loadComponent: () => import('./features/envios/envios.page').then((m) => m.EnviosPage),
       },

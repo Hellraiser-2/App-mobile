@@ -178,6 +178,14 @@ describe('consulta de stock', () => {
     expect(await skus('%')).toEqual([]);
   });
 
+  it('busca por el código del espacio de bodega, que es lo que lleva su etiqueta QR', async () => {
+    const { cuerpo } = await obtener<VarianteStock[]>('/inventario/variantes?q=b-pol-01');
+    expect(cuerpo.map((v) => [v.sku, v.codigoUbicacion])).toEqual([
+      ['RS-0001', 'B-POL-01'],
+      ['RS-0002', 'B-POL-01'],
+    ]);
+  });
+
   it('encuentra una variante por el código escaneado o por su SKU', async () => {
     const porCodigo = await obtener<VarianteStock>('/inventario/variantes/por-codigo/7800000000001');
     const porSku = await obtener<VarianteStock>('/inventario/variantes/por-codigo/RS-0001');

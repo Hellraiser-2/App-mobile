@@ -99,7 +99,7 @@ function unidadesDe(variante: VarianteStock): number {
         <app-ficha-variante [variante]="seleccionada"></app-ficha-variante>
       } @else {
         <ion-searchbar
-          placeholder="Nombre, categoría, banda o SKU"
+          placeholder="Nombre, banda, SKU o espacio"
           [value]="filtro()"
           (ionInput)="filtro.set(valor($event))"
         ></ion-searchbar>
@@ -370,7 +370,7 @@ export class BusquedaPage implements OnDestroy {
     for (const variante of this.catalogo()) {
       const coincideTexto =
         !texto ||
-        [variante.producto, variante.sku, variante.categoria, variante.banda ?? ''].some((campo) =>
+        [variante.producto, variante.sku, variante.categoria, variante.banda ?? '', variante.codigoUbicacion].some((campo) =>
           campo.toLowerCase().includes(texto),
         );
       const coincideCategoria = categoria === null || variante.categoria === categoria;
