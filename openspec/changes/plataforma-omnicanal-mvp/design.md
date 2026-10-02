@@ -357,7 +357,46 @@ El primer backend real es una única aplicación NestJS (`services/api`) con los
 - Idempotencia: la clave de cada operación se guarda en `inventario.operaciones` y los movimientos la referencian. La decisión 5 pedía la clave única en `movimientos`, pero un ingreso de varias prendas registra varios movimientos con una misma clave.
 - Categorías: `inventario.categorias` guarda si la categoría usa banda, su zona de bodega y la última posición entregada, y `inventario.categorias_tallas` las tallas que admite, en orden.
 - Pendiente respecto del diseño: el límite de solicitudes por IP, los endpoints de Usuarios distintos de la sesión, y los módulos de Ventas y Pagos. El esquema `ventas` existe solo con las tablas que necesita un pedido.
-- La app usa la API real en la imagen Docker (configuración `docker` de Angular, con `apiUrl: '/api/v1'` y sin el backend simulado en el paquete). El resto de las compilaciones sigue con el backend simulado mientras no haya una dirección pública de la API.
+- La app usa la API real en la imagen Docker (configuración `docker` de Angular, con `apiUrl: '/api/v1'` y sin el backend simulado en el paquete).
+
+### 13.3. La app instalada elige su servidor en tiempo de ejecución
+
+En un teléfono la dirección del backend no se conoce al compilar y cambia con la red, así que la app la guarda en el dispositivo y permite cambiarla desde la pantalla de inicio de sesión. Esto reemplaza lo dicho en 13.1 sobre `useMockApi` como opción fija de entorno.
+
+- Dos modos: **Servidor**, con la dirección del backend, y **Demostración**, que responde con el backend simulado y no necesita red. `useMockApi` pasa a ser solo el modo inicial.
+- Los clientes de API siguen armando sus direcciones con el prefijo `environment.apiUrl`. Un interceptor al final de la cadena cambia ese prefijo por el servidor elegido; en modo demostración el backend simulado responde antes.
+- Un servidor solo se guarda si responde la verificación de vida (`GET /api/v1/salud`), para no dejar la app sin poder entrar.
+- `npm run apk` compila con `--define SERVIDOR_API=...` y fija como servidor inicial la dirección del equipo en la red local. Sin dirección, el APK arranca en modo demostración.
+- El APK permite tráfico HTTP sin cifrar (`server.cleartext` y `android.allowMixedContent` en la configuración de Capacitor), porque el backend de desarrollo no tiene certificado. Debe quitarse cuando el backend se publique por HTTPS.
+- En la imagen Docker la conexión no es configurable: la app y la API comparten origen.
+
+### 13.4. Etiquetas QR de los espacios de bodega
+
+Cada producto ocupa un espacio de la bodega, identificado por su código de ubicación (`B-<zona>-<número>`, ver 13.1). La app genera una etiqueta por espacio con un código QR y su número, para pegarla en la repisa.
+
+- El QR contiene solo el código del espacio, por ejemplo `B-POL-03`. Lo dibuja la app como SVG, de modo que funciona sin conexión y también en modo demostración.
+- La pantalla "Espacios de bodega" lista los espacios, muestra la etiqueta de cada uno y, en la versión web, imprime una o todas. La app instalada no imprime: no tiene diálogo de impresión.
+- El espacio lo asigna el servicio al crear el producto; la pantalla de producto creado muestra su QR. La app no permite todavía mover un producto a otro espacio.
+- Escanear la etiqueta de un espacio desde cualquier pantalla con escáner muestra las tallas y colores guardados ahí; si hay una sola, queda elegida.
+- `GET /inventario/variantes?q=` busca también por código de ubicación. No hay endpoint propio de espacios: la app los agrupa a partir de las variantes.
+- Etiquetas de prendas: la pantalla "Etiquetas de prendas" genera una etiqueta por variante con un QR que contiene su SKU, más el nombre, la talla y el color. `GET /inventario/variantes/por-codigo/:codigo` ya acepta el SKU, de modo que el escáner de la app de bodega la reconoce, y el POS podrá leerla igual cuando exista. En la versión web se imprime una, una por unidad en stock (con tope de 60) o una por cada prenda visible.
+- Esto cubre en la app lo que la tarea 5.3 pedía como PDF generado por el servicio (`POST /inventario/etiquetas`), que no se implementó.
+- El punto de venta no existe todavía: hoy la etiqueta sirve para contar, mover y dar de baja desde la app de bodega. Descontar por venta requiere el módulo de Ventas.
+- En modo demostración, la pantalla principal lo avisa: esos datos no llegan a la base.
+
+### 13.5. Modelo de datos completo
+
+Las tablas de la decisión 5 están todas creadas, en las migraciones `001` a `009` de `db/migrations`. El modelo, sus reglas, la justificación de 3FN y los diagramas generados desde la base están en `docs/modelo-datos.md`.
+
+Diferencias con la decisión 5, todas explicadas en ese documento:
+
+- `logistica.solicitudes_despacho` guarda el destino de una compra mientras se paga. Al confirmarse el pago se convierte en pedido y se elimina.
+- `ventas.visitas` lleva un identificador de sesión único; `ventas.detalle_venta` registra la ubicación de origen de cada línea POS.
+- `pagos.medios_pago` agrega nombre y si es presencial; `pagos.transacciones` agrega los intentos de reverso y la marca de revisión manual.
+- `inventario.reservas` e `inventario.movimientos` referencian la venta con clave foránea, y una venta reserva cada prenda una sola vez.
+- Están las 346 comunas de Chile. Las tasas de comisión nacen en cero y las tarifas de respaldo vacías: las define el Gerente.
+
+Pendiente de las tareas del grupo 2: un usuario de base de datos por servicio (2.1) y las migraciones de reversa (2.2).
 
 ### 14. Cálculo de los indicadores
 

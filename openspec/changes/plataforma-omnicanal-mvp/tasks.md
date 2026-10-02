@@ -18,10 +18,10 @@ Cuatro sprints de tres semanas. Los grupos 1 a 4 corresponden al Sprint 1, los g
 
 - [ ] 2.1 Crear los esquemas `usuarios`, `inventario`, `ventas`, `pagos` y `logistica` con un usuario de base de datos por servicio, y verificar con una prueba que cada usuario no puede leer tablas de otro esquema
 - [ ] 2.2 Escribir las migraciones del esquema `usuarios` (roles, usuarios, sesiones) con los cinco roles como datos iniciales, y verificar que se aplican y revierten sin errores
-- [ ] 2.3 Escribir las migraciones del esquema `inventario` (categorías, productos, tallas, colores, variantes, ubicaciones, existencias, reservas, tipos de movimiento y de merma, movimientos, conteos, búsquedas), y verificar con pruebas las restricciones de unicidad y los `CHECK` de cantidad no negativa
-- [ ] 2.4 Escribir las migraciones de los esquemas `ventas`, `pagos` y `logistica` con sus claves foráneas entre esquemas, y verificar que el conjunto completo se aplica en orden sobre una base vacía
-- [ ] 2.5 Cargar los datos de referencia (ubicaciones, tipos de movimiento, tipos de merma, estados, medios de pago, regiones y comunas de Chile), y verificar con una consulta que cada tabla de referencia tiene sus filas
-- [ ] 2.6 Generar el diagrama entidad-relación en `docs/modelo-datos.md` con la justificación de 3FN de cada corrección, y verificar que el diagrama coincide con las tablas creadas por las migraciones
+- [x] 2.3 Escribir las migraciones del esquema `inventario` (categorías, productos, tallas, colores, variantes, ubicaciones, existencias, reservas, tipos de movimiento y de merma, movimientos, conteos, búsquedas), y verificar con pruebas las restricciones de unicidad y los `CHECK` de cantidad no negativa
+- [x] 2.4 Escribir las migraciones de los esquemas `ventas`, `pagos` y `logistica` con sus claves foráneas entre esquemas, y verificar que el conjunto completo se aplica en orden sobre una base vacía
+- [x] 2.5 Cargar los datos de referencia (ubicaciones, tipos de movimiento, tipos de merma, estados, medios de pago, regiones y comunas de Chile), y verificar con una consulta que cada tabla de referencia tiene sus filas
+- [x] 2.6 Generar el diagrama entidad-relación en `docs/modelo-datos.md` con la justificación de 3FN de cada corrección, y verificar que el diagrama coincide con las tablas creadas por las migraciones
 
 ## 3. Sprint 1 (semanas 1-3): Usuarios, sesión y control por rol
 

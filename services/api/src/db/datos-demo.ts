@@ -49,16 +49,6 @@ const VARIANTES = [
   { id: 8, producto: 'Polera Rayo', talla: 'L', color: 'Negro', bodega: 5, sala: 1, activo: true },
 ];
 
-const COMUNAS = [
-  { nombre: 'Providencia', region: 'Región Metropolitana', zona: 'SANTIAGO' },
-  { nombre: 'Ñuñoa', region: 'Región Metropolitana', zona: 'SANTIAGO' },
-  { nombre: 'Valparaíso', region: 'Valparaíso', zona: 'REGIONES' },
-  { nombre: 'Concepción', region: 'Biobío', zona: 'REGIONES' },
-  { nombre: 'Temuco', region: 'La Araucanía', zona: 'REGIONES' },
-  { nombre: 'Antofagasta', region: 'Antofagasta', zona: 'REGIONES' },
-  { nombre: 'Rancagua', region: 'O’Higgins', zona: 'REGIONES' },
-];
-
 interface PedidoDemo {
   id: number;
   venta: number;
@@ -66,6 +56,7 @@ interface PedidoDemo {
   destinatario: string;
   direccion: string;
   comuna: string;
+  region: string;
   /** Pares `[idVariante, cantidad]`. */
   lineas: [number, number][];
   pagado: number;
@@ -76,13 +67,13 @@ interface PedidoDemo {
 
 /** Las horas son "hace cuánto" respecto del momento de la carga, para que siempre haya pedidos de cada estado. */
 const PEDIDOS: PedidoDemo[] = [
-  { id: 1001, venta: 5001, estado: 'PAGADO', destinatario: 'Camila Rojas', direccion: 'Av. Providencia 1234, depto 52', comuna: 'Providencia', lineas: [[2, 1]], pagado: 2 },
-  { id: 1002, venta: 5002, estado: 'EN_PREPARACION', destinatario: 'Matías Fuentes', direccion: 'Calle Condell 880', comuna: 'Valparaíso', lineas: [[2, 1]], pagado: 20 },
-  { id: 1003, venta: 5003, estado: 'DESPACHO_PENDIENTE', destinatario: 'Javiera Soto', direccion: 'Los Carrera 455', comuna: 'Concepción', lineas: [[2, 1]], pagado: 26 },
-  { id: 1004, venta: 5004, estado: 'DESPACHADO', destinatario: 'Diego Muñoz', direccion: 'Av. Alemania 310', comuna: 'Temuco', lineas: [[3, 1], [1, 2]], pagado: 40, despachado: 22, tracking: 'STK-900104' },
-  { id: 1005, venta: 5005, estado: 'DESPACHADO', destinatario: 'Fernanda Castro', direccion: 'Arturo Prat 2100', comuna: 'Antofagasta', lineas: [[4, 1]], pagado: 70, despachado: 50, tracking: 'STK-900105' },
-  { id: 1006, venta: 5006, estado: 'ENTREGADO', destinatario: 'Sebastián Vera', direccion: 'Irarrázaval 3400', comuna: 'Ñuñoa', lineas: [[1, 1]], pagado: 120, despachado: 100, entregado: 75, tracking: 'STK-900106' },
-  { id: 1007, venta: 5007, estado: 'ENTREGADO', destinatario: 'Antonia Pérez', direccion: 'O’Higgins 150', comuna: 'Rancagua', lineas: [[4, 2]], pagado: 200, despachado: 180, entregado: 150, tracking: 'STK-900107' },
+  { id: 1001, venta: 5001, estado: 'PAGADO', destinatario: 'Camila Rojas', direccion: 'Av. Providencia 1234, depto 52', comuna: 'Providencia', region: 'Región Metropolitana', lineas: [[2, 1]], pagado: 2 },
+  { id: 1002, venta: 5002, estado: 'EN_PREPARACION', destinatario: 'Matías Fuentes', direccion: 'Calle Condell 880', comuna: 'Valparaíso', region: 'Valparaíso', lineas: [[2, 1]], pagado: 20 },
+  { id: 1003, venta: 5003, estado: 'DESPACHO_PENDIENTE', destinatario: 'Javiera Soto', direccion: 'Los Carrera 455', comuna: 'Concepción', region: 'Biobío', lineas: [[2, 1]], pagado: 26 },
+  { id: 1004, venta: 5004, estado: 'DESPACHADO', destinatario: 'Diego Muñoz', direccion: 'Av. Alemania 310', comuna: 'Temuco', region: 'La Araucanía', lineas: [[3, 1], [1, 2]], pagado: 40, despachado: 22, tracking: 'STK-900104' },
+  { id: 1005, venta: 5005, estado: 'DESPACHADO', destinatario: 'Fernanda Castro', direccion: 'Arturo Prat 2100', comuna: 'Antofagasta', region: 'Antofagasta', lineas: [[4, 1]], pagado: 70, despachado: 50, tracking: 'STK-900105' },
+  { id: 1006, venta: 5006, estado: 'ENTREGADO', destinatario: 'Sebastián Vera', direccion: 'Irarrázaval 3400', comuna: 'Ñuñoa', region: 'Región Metropolitana', lineas: [[1, 1]], pagado: 120, despachado: 100, entregado: 75, tracking: 'STK-900106' },
+  { id: 1007, venta: 5007, estado: 'ENTREGADO', destinatario: 'Antonia Pérez', direccion: 'O’Higgins 150', comuna: 'Rancagua', region: 'O’Higgins', lineas: [[4, 2]], pagado: 200, despachado: 180, entregado: 150, tracking: 'STK-900107' },
 ];
 
 const ESTADOS_SIN_DESPACHAR = new Set(['PAGADO', 'EN_PREPARACION', 'DESPACHO_PENDIENTE', 'ATENCION_MANUAL']);
@@ -187,14 +178,16 @@ async function sembrar(tx: Ejecutor): Promise<void> {
     }
   }
 
+  // Las comunas vienen cargadas por las migraciones; aquí solo se ubican las de los pedidos.
   const comunas = new Map<string, number>();
-  for (const comuna of COMUNAS) {
+  for (const pedido of PEDIDOS) {
     const [fila] = await tx.consultar<{ id: number }>(
-      `INSERT INTO logistica.comunas (id_region, nombre, zona)
-       VALUES ((SELECT id_region FROM logistica.regiones WHERE nombre = $1), $2, $3) RETURNING id_comuna AS id`,
-      [comuna.region, comuna.nombre, comuna.zona],
+      `SELECT c.id_comuna AS id FROM logistica.comunas c
+       JOIN logistica.regiones r ON r.id_region = c.id_region
+       WHERE c.nombre = $1 AND r.nombre = $2`,
+      [pedido.comuna, pedido.region],
     );
-    comunas.set(comuna.nombre, fila!.id);
+    comunas.set(pedido.comuna, fila!.id);
   }
 
   const productoDeVariante = new Map(VARIANTES.map((variante) => [variante.id, productos.get(variante.producto)!]));
@@ -205,6 +198,12 @@ async function sembrar(tx: Ejecutor): Promise<void> {
        VALUES ($1, 'ECOMMERCE', $2, (SELECT id_estado FROM ventas.estados_venta WHERE codigo = 'PAGADA'), $3, $4, $5)`,
       [pedido.venta, ID_CLIENTE, hace(pedido.pagado), total, `demo-${pedido.venta}`],
     );
+    await tx.consultar(
+      `INSERT INTO pagos.transacciones (id_venta, id_medio, monto, estado, token_webpay, codigo_autorizacion, creado_en, resuelto_en)
+       VALUES ($1, (SELECT id_medio FROM pagos.medios_pago WHERE codigo = 'WEBPAY_DEBITO'), $2, 'AUTORIZADA', $3, $4, $5, $5)`,
+      [pedido.venta, total, `demo-${pedido.venta}`, String(pedido.venta), hace(pedido.pagado)],
+    );
+    await tx.consultar('INSERT INTO ventas.costos_venta (id_venta, flete_cobrado) VALUES ($1, $2)', [pedido.venta, FLETE]);
     for (const [idVariante, cantidad] of pedido.lineas) {
       const { precio, costo } = productoDeVariante.get(idVariante)!;
       await tx.consultar(
