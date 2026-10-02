@@ -14,4 +14,12 @@ export class LogisticaApi {
   pedidos(): Observable<Pedido[]> {
     return this.http.get<Pedido[]>(`${this.url}/pedidos`);
   }
+
+  /**
+   * Genera el despacho del pedido y lo devuelve con su código de seguimiento.
+   * Repetirlo no crea otro despacho, de modo que se puede reintentar sin riesgo.
+   */
+  generarDespacho(idPedido: number): Observable<Pedido> {
+    return this.http.post<Pedido>(`${this.url}/pedidos/${idPedido}/despacho`, null);
+  }
 }

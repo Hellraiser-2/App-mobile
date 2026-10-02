@@ -1,4 +1,12 @@
-import type { Movimiento, TipoMerma, TipoMovimiento, Ubicacion, VarianteStock } from '@rockstar/contracts';
+import type {
+  ArticuloCatalogo,
+  Movimiento,
+  TipoMerma,
+  TipoMovimiento,
+  Ubicacion,
+  VarianteGestion,
+  VarianteStock,
+} from '@rockstar/contracts';
 
 import type { Ejecutor } from '../db/base-de-datos.js';
 import { ID_UBICACION } from './ubicaciones.js';
@@ -11,6 +19,9 @@ export const RESERVA_VIGENTE = `(r.estado = 'CONFIRMADA' OR (r.estado = 'ACTIVA'
 
 interface FilaVariante {
   id_variante: number;
+  id_producto: number;
+  precio: number | null;
+  descripcion: string | null;
   sku: string;
   codigo: string;
   producto: string;
@@ -27,7 +38,8 @@ interface FilaVariante {
 }
 
 const SELECCION_VARIANTE = `
-  SELECT v.id_variante, v.sku, v.codigo, p.nombre AS producto, c.nombre AS categoria, b.nombre AS banda,
+  SELECT v.id_variante, p.id_producto, p.precio, p.descripcion,
+         v.sku, v.codigo, p.nombre AS producto, c.nombre AS categoria, b.nombre AS banda,
          p.imagen_url, p.codigo_ubicacion, t.nombre AS talla, co.nombre AS color,
          (v.activo AND p.activo) AS activo,
          COALESCE((SELECT e.cantidad FROM inventario.existencias e
@@ -74,6 +86,41 @@ export async function variantesConStock(ejecutor: Ejecutor, condicion = '', para
   return filas.map(aVarianteStock);
 }
 
+/** Las mismas variantes, con el precio y la descripción de su producto, para administrarlas. */
+export async function variantesDeGestion(ejecutor: Ejecutor, condicion = '', parametros: unknown[] = []): Promise<VarianteGestion[]> {
+  const filas = await ejecutor.consultar<FilaVariante>(`${SELECCION_VARIANTE} ${condicion} ORDER BY v.id_variante`, parametros);
+  return filas.map((fila) => ({
+    ...aVarianteStock(fila),
+    idProducto: fila.id_producto,
+    precio: fila.precio,
+    descripcion: fila.descripcion,
+  }));
+}
+
+/**
+ * Lo que la tienda web ofrece: variantes activas de productos con precio, por nombre de
+ * producto. No incluye ubicaciones ni reservas, que son datos internos.
+ */
+export async function articulosDeCatalogo(ejecutor: Ejecutor): Promise<ArticuloCatalogo[]> {
+  const filas = await ejecutor.consultar<FilaVariante>(
+    `${SELECCION_VARIANTE} WHERE v.activo AND p.activo AND p.precio IS NOT NULL ORDER BY p.nombre, v.id_variante`,
+  );
+  return filas.map((fila) => ({
+    idVariante: fila.id_variante,
+    idProducto: fila.id_producto,
+    sku: fila.sku,
+    producto: fila.producto,
+    categoria: fila.categoria,
+    banda: fila.banda,
+    talla: fila.talla,
+    color: fila.color,
+    precio: fila.precio!,
+    descripcion: fila.descripcion,
+    imagenUrl: fila.imagen_url,
+    disponible: Math.max(0, fila.bodega + fila.sala - fila.reservado),
+  }));
+}
+
 interface FilaMovimiento {
   id_movimiento: number;
   id_variante: number;
@@ -88,7 +135,24 @@ interface FilaMovimiento {
 }
 
 /** Movimientos que registró una operación, en el orden en que se registraron. */
-export async function movimientosDeOperacion(ejecutor: Ejecutor, claveIdempotencia: string): Promise<Movimiento[]> {
+export function movimientosDeOperacion(ejecutor: Ejecutor, claveIdempotencia: string): Promise<Movimiento[]> {
+  return movimientos(ejecutor, 'WHERE m.clave_idempotencia = $1 ORDER BY m.id_movimiento', [claveIdempotencia]);
+}
+
+/** Tope del historial que se entrega de una vez. */
+const MAXIMO_HISTORIAL = 500;
+
+/** Historial de movimientos, del más reciente al más antiguo; `tipo` lo limita a uno. */
+export function historialDeMovimientos(ejecutor: Ejecutor, tipo: string | null): Promise<Movimiento[]> {
+  return movimientos(
+    ejecutor,
+    `WHERE $1::text IS NULL OR tm.codigo = $1 ORDER BY m.id_movimiento DESC LIMIT ${MAXIMO_HISTORIAL}`,
+    [tipo],
+  );
+}
+
+/** `filtro` es el `WHERE` y el orden sobre los alias de la selección (`m`, `tm`), con sus parámetros. */
+async function movimientos(ejecutor: Ejecutor, filtro: string, parametros: unknown[]): Promise<Movimiento[]> {
   const filas = await ejecutor.consultar<FilaMovimiento>(
     `SELECT m.id_movimiento, m.id_variante, tm.codigo AS tipo, tme.codigo AS tipo_merma, u.nombre AS ubicacion,
             ud.nombre AS ubicacion_destino, m.cantidad, m.fecha, m.id_usuario, m.motivo
@@ -97,9 +161,8 @@ export async function movimientosDeOperacion(ejecutor: Ejecutor, claveIdempotenc
      LEFT JOIN inventario.tipos_merma tme ON tme.id_tipo_merma = m.id_tipo_merma
      JOIN inventario.ubicaciones u ON u.id_ubicacion = m.id_ubicacion
      LEFT JOIN inventario.ubicaciones ud ON ud.id_ubicacion = m.id_ubicacion_destino
-     WHERE m.clave_idempotencia = $1
-     ORDER BY m.id_movimiento`,
-    [claveIdempotencia],
+     ${filtro}`,
+    parametros,
   );
   return filas.map((fila) => ({
     idMovimiento: fila.id_movimiento,

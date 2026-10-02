@@ -19,7 +19,8 @@ import { addIcons } from 'ionicons';
 import { cubeOutline, locationOutline, timeOutline } from 'ionicons/icons';
 import { firstValueFrom } from 'rxjs';
 
-import { mensajeDeError } from '../../core/api/errores';
+import { codigoDeError, mensajeDeError } from '../../core/api/errores';
+import { AvisosService } from '../../shared/avisos.service';
 import { valorDeEvento } from '../../shared/formato';
 import {
   GRUPOS_DE_ENVIO,
@@ -27,11 +28,15 @@ import {
   agruparEnvios,
   esUrgente,
   etiquetaDeEstado,
+  grupoDeEnvio,
   momentoDelPedido,
 } from './envios';
 import { LogisticaApi } from './logistica.api';
 
-/** Pedidos del e-commerce separados en por enviar, en camino y enviados. */
+/**
+ * Pedidos del e-commerce separados en por enviar, en camino y enviados. Desde un pedido
+ * por enviar se genera su despacho, que le da el código de seguimiento.
+ */
 @Component({
   selector: 'app-envios',
   imports: [
@@ -116,6 +121,32 @@ import { LogisticaApi } from './logistica.api';
               </span>
             </p>
           }
+          @if (porDespachar(pedido)) {
+            <div class="despacho">
+              @if (fallaDe(pedido); as mensaje) {
+                <ion-text color="danger">
+                  <p role="alert">{{ mensaje }}</p>
+                </ion-text>
+              }
+              @if (porConfirmar() === pedido.idPedido) {
+                <p class="pregunta">
+                  Se emitirá la orden en Starken y las prendas saldrán del stock. No se puede deshacer.
+                </p>
+                <div class="botones">
+                  <ion-button fill="outline" color="medium" [disabled]="ocupado()" (click)="porConfirmar.set(null)">
+                    Cancelar
+                  </ion-button>
+                  <ion-button [disabled]="ocupado()" (click)="despachar(pedido)">
+                    {{ despachando() === pedido.idPedido ? 'Generando…' : 'Confirmar despacho' }}
+                  </ion-button>
+                </div>
+              } @else {
+                <ion-button expand="block" [disabled]="ocupado()" (click)="pedirConfirmacion(pedido)">
+                  Generar despacho
+                </ion-button>
+              }
+            </div>
+          }
         </ion-card>
       } @empty {
         @if (!error()) {
@@ -193,24 +224,58 @@ import { LogisticaApi } from './logistica.api';
       display: block;
       color: var(--rs-tenue);
     }
+    .despacho {
+      margin-top: 14px;
+    }
+    .despacho p {
+      margin: 0 0 10px;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+    .pregunta {
+      color: var(--rs-tenue);
+    }
+    .botones {
+      display: flex;
+      gap: 8px;
+    }
+    .botones ion-button {
+      flex: 1;
+      margin: 0;
+    }
   `,
 })
 export class EnviosPage {
   private readonly api = inject(LogisticaApi);
+  private readonly avisos = inject(AvisosService);
 
   private readonly pedidos = signal<Pedido[]>([]);
   readonly grupo = signal<GrupoDeEnvio>('POR_ENVIAR');
   readonly cargando = signal(false);
   readonly error = signal<string | null>(null);
 
+  /** Pedido cuyo despacho espera la confirmación del usuario. */
+  readonly porConfirmar = signal<number | null>(null);
+  /** Pedido cuyo despacho se está generando. */
+  readonly despachando = signal<number | null>(null);
+  /** Falla del último despacho que no se pudo generar. */
+  readonly errorDespacho = signal<{ idPedido: number; mensaje: string } | null>(null);
+
   readonly envios = computed(() => agruparEnvios(this.pedidos()));
   readonly visibles = computed(() => this.envios()[this.grupo()]);
+  /** Mientras se genera un despacho no se inicia otro. */
+  readonly ocupado = computed(() => this.despachando() !== null);
 
   protected readonly grupos = GRUPOS_DE_ENVIO;
   protected readonly etiquetaDeEstado = etiquetaDeEstado;
   protected readonly valor = valorDeEvento;
   protected readonly urgente = (pedido: Pedido) => esUrgente(pedido);
   protected readonly momento = (pedido: Pedido) => momentoDelPedido(pedido);
+  protected readonly porDespachar = (pedido: Pedido) => grupoDeEnvio(pedido.estado) === 'POR_ENVIAR';
+  protected readonly fallaDe = (pedido: Pedido) => {
+    const falla = this.errorDespacho();
+    return falla?.idPedido === pedido.idPedido ? falla.mensaje : null;
+  };
 
   constructor() {
     addIcons({ cubeOutline, locationOutline, timeOutline });
@@ -230,6 +295,38 @@ export class EnviosPage {
       this.error.set(mensajeDeError(error));
     } finally {
       this.cargando.set(false);
+    }
+  }
+
+  /** Un despacho no se deshace: antes de generarlo se pide confirmarlo en el mismo pedido. */
+  pedirConfirmacion(pedido: Pedido): void {
+    this.errorDespacho.set(null);
+    this.porConfirmar.set(pedido.idPedido);
+  }
+
+  /**
+   * Genera el despacho y deja el pedido en camino con su código de seguimiento. Si la
+   * respuesta se pierde, se puede repetir: el servidor responde el despacho que ya existe.
+   */
+  async despachar(pedido: Pedido): Promise<void> {
+    if (this.ocupado()) {
+      return;
+    }
+    this.despachando.set(pedido.idPedido);
+    this.errorDespacho.set(null);
+    try {
+      const despachado = await firstValueFrom(this.api.generarDespacho(pedido.idPedido));
+      this.pedidos.update((pedidos) => pedidos.map((p) => (p.idPedido === despachado.idPedido ? despachado : p)));
+      this.porConfirmar.set(null);
+      await this.avisos.exito(`Pedido #${despachado.idPedido} despachado. Seguimiento ${despachado.trackingStarken}.`);
+    } catch (error) {
+      const mensaje =
+        codigoDeError(error) === 'STOCK_INSUFICIENTE'
+          ? 'No hay existencia suficiente de las prendas del pedido. Revisa el stock antes de despacharlo.'
+          : mensajeDeError(error);
+      this.errorDespacho.set({ idPedido: pedido.idPedido, mensaje });
+    } finally {
+      this.despachando.set(null);
     }
   }
 

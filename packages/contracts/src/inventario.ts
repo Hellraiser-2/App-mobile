@@ -162,3 +162,46 @@ export interface Busqueda {
   fin?: string;
   duracionSegundos?: number;
 }
+
+/**
+ * Prenda a la venta en la tienda web. GET /inventario/catalogo (público)
+ *
+ * Solo aparecen las variantes activas de productos con precio. No expone ubicaciones
+ * ni reservas: `disponible` es lo que un cliente puede comprar en este momento.
+ */
+export interface ArticuloCatalogo {
+  idVariante: number;
+  idProducto: number;
+  sku: string;
+  producto: string;
+  categoria: string;
+  banda: string | null;
+  talla: string;
+  color: string;
+  precio: number;
+  descripcion: string | null;
+  imagenUrl: string | null;
+  disponible: number;
+}
+
+/**
+ * Variante con los datos comerciales de su producto, para administrarlo.
+ * GET /inventario/productos (Vendedor, Bodega, Gerente)
+ */
+export interface VarianteGestion extends VarianteStock {
+  idProducto: number;
+  /** `null` mientras el Gerente no lo define; sin precio el producto no se publica en la tienda. */
+  precio: number | null;
+  descripcion: string | null;
+}
+
+/**
+ * PATCH /inventario/productos/:id (Gerente)
+ *
+ * Cambia los datos comerciales del producto. Solo se modifican los campos enviados.
+ * Un precio `null` retira el producto de la tienda. Responde sus variantes.
+ */
+export interface ProductoEdicionRequest {
+  precio?: number | null;
+  descripcion?: string | null;
+}

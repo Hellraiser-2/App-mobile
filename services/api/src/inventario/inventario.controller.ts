@@ -1,13 +1,22 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
-import type { Busqueda, Categoria, ResultadoMovimientos, Usuario, VarianteStock } from '@rockstar/contracts';
+import type {
+  ArticuloCatalogo,
+  Busqueda,
+  Categoria,
+  Movimiento,
+  ResultadoMovimientos,
+  Usuario,
+  VarianteGestion,
+  VarianteStock,
+} from '@rockstar/contracts';
 
-import { Roles, UsuarioActual } from '../auth/decoradores.js';
+import { Publica, Roles, UsuarioActual } from '../auth/decoradores.js';
 import { noEncontrado } from '../comun/errores.js';
 import { patronLike } from '../comun/texto.js';
 import { BaseDeDatos } from '../db/base-de-datos.js';
 import { BusquedasService } from './busquedas.service.js';
 import { CatalogosService } from './catalogos.service.js';
-import { variantesConStock } from './consultas.js';
+import { articulosDeCatalogo, historialDeMovimientos, variantesConStock, variantesDeGestion } from './consultas.js';
 import { MovimientosService } from './movimientos.service.js';
 import { ProductosService } from './productos.service.js';
 
@@ -24,6 +33,15 @@ export class InventarioController {
     private readonly movimientos: MovimientosService,
     private readonly busquedas: BusquedasService,
   ) {}
+
+  // --- Tienda web ---
+
+  /** Lo que la tienda ofrece a cualquier visitante: prendas con precio y su disponibilidad al instante. */
+  @Get('catalogo')
+  @Publica()
+  catalogo(): Promise<ArticuloCatalogo[]> {
+    return articulosDeCatalogo(this.db);
+  }
 
   // --- Consulta de stock ---
 
@@ -102,6 +120,27 @@ export class InventarioController {
   @Roles('BODEGA', 'GERENTE')
   crearProducto(@Body() cuerpo: unknown, @UsuarioActual() usuario: Usuario): Promise<VarianteStock> {
     return this.productos.crear(cuerpo, usuario);
+  }
+
+  /** Todas las variantes con el precio y la descripción de su producto, tengan precio o no. */
+  @Get('productos')
+  @Roles('VENDEDOR', 'BODEGA', 'GERENTE')
+  productosDeGestion(): Promise<VarianteGestion[]> {
+    return variantesDeGestion(this.db);
+  }
+
+  /** El precio lo define el Gerente (matriz de permisos del diseño). */
+  @Patch('productos/:id')
+  @Roles('GERENTE')
+  editarProducto(@Param('id', ParseIntPipe) id: number, @Body() cuerpo: unknown): Promise<VarianteGestion[]> {
+    return this.productos.editar(id, cuerpo);
+  }
+
+  /** Historial de movimientos, del más reciente al más antiguo. `tipo` lo limita, por ejemplo a `MERMA`. */
+  @Get('movimientos')
+  @Roles('BODEGA', 'GERENTE')
+  historial(@Query('tipo') tipo?: string): Promise<Movimiento[]> {
+    return historialDeMovimientos(this.db, typeof tipo === 'string' && tipo !== '' ? tipo : null);
   }
 
   @Post('movimientos/ingresos')

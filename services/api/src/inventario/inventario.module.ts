@@ -10,5 +10,7 @@ import { StockService } from './stock.service.js';
 @Module({
   controllers: [InventarioController],
   providers: [BusquedasService, CatalogosService, MovimientosService, ProductosService, StockService],
+  // Logística descuenta el stock al despachar un pedido.
+  exports: [StockService],
 })
 export class InventarioModule {}

@@ -127,6 +127,63 @@ describe('envíos', () => {
       expect(pagina.visibles()).toHaveLength(3);
     });
 
+    it('genera el despacho de un pedido por enviar y lo deja en camino con su código de seguimiento', async () => {
+      const pagina = crear(EnviosPage);
+      await pagina.cargar();
+      const pedido = pagina.visibles().find((p) => p.idPedido === 1001)!;
+
+      pagina.pedirConfirmacion(pedido);
+      expect(pagina.porConfirmar()).toBe(1001);
+      await pagina.despachar(pedido);
+
+      expect(pagina.porConfirmar()).toBeNull();
+      expect(pagina.errorDespacho()).toBeNull();
+      expect(pagina.visibles().map((p) => p.idPedido)).toEqual([1003, 1002]);
+      pagina.grupo.set('EN_CAMINO');
+      expect(pagina.visibles()[0]).toMatchObject({ idPedido: 1001, estado: 'DESPACHADO', trackingStarken: 'STK-901001' });
+      expect(entorno.avisos.mensajes).toEqual(['Pedido #1001 despachado. Seguimiento STK-901001.']);
+    });
+
+    it('al despachar, la prenda sale de la bodega y deja de estar reservada', async () => {
+      const pagina = crear(EnviosPage);
+      await pagina.cargar();
+      const antes = await entorno.variante('RS-0002');
+
+      await pagina.despachar(pagina.visibles().find((p) => p.idPedido === 1001)!);
+
+      const despues = await entorno.variante('RS-0002');
+      expect(despues.existencias).toEqual([
+        { ubicacion: 'BODEGA', cantidad: antes.existencias[0].cantidad - 1 },
+        { ubicacion: 'SALA_VENTAS', cantidad: antes.existencias[1].cantidad },
+      ]);
+      expect(despues.reservado).toBe(antes.reservado - 1);
+      expect(despues.disponible).toBe(antes.disponible);
+    });
+
+    it('si la respuesta del despacho se pierde, reintentar no genera otro', async () => {
+      const pagina = crear(EnviosPage);
+      await pagina.cargar();
+      const pedido = pagina.visibles().find((p) => p.idPedido === 1002)!;
+      const antes = await entorno.variante('RS-0002');
+      pagina.pedirConfirmacion(pedido);
+      entorno.red.pierdeRespuestas = true;
+
+      await pagina.despachar(pedido);
+
+      expect(pagina.errorDespacho()).toEqual({ idPedido: 1002, mensaje: expect.stringContaining('No hay conexión') });
+      expect(pagina.porConfirmar()).toBe(1002);
+      expect(pagina.despachando()).toBeNull();
+      expect(pagina.visibles().map((p) => p.idPedido)).toContain(1002);
+
+      entorno.red.pierdeRespuestas = false;
+      await pagina.despachar(pedido);
+
+      expect(pagina.errorDespacho()).toBeNull();
+      pagina.grupo.set('EN_CAMINO');
+      expect(pagina.visibles()[0]).toMatchObject({ idPedido: 1002, trackingStarken: 'STK-901002' });
+      expect((await entorno.variante('RS-0002')).existencias[0].cantidad).toBe(antes.existencias[0].cantidad - 1);
+    });
+
     it('resume en la pantalla principal cuántos envíos hay en cada estado', async () => {
       const inicio = crear(InicioPage);
       expect(inicio.resumenEnvios().map((g) => g.cantidad)).toEqual([null, null, null]);

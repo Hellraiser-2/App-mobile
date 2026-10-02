@@ -31,3 +31,38 @@ export interface Pedido {
   /** Número de seguimiento de Starken; existe desde que se emite el despacho. */
   trackingStarken?: string;
 }
+
+/** GET /logistica/regiones (público) */
+export interface Region {
+  idRegion: number;
+  nombre: string;
+}
+
+/** GET /logistica/comunas?region= (público) */
+export interface Comuna {
+  idComuna: number;
+  nombre: string;
+}
+
+/** POST /logistica/fletes/cotizar (público) */
+export interface CotizacionFleteRequest {
+  idComuna: number;
+}
+
+export interface CotizacionFlete {
+  idComuna: number;
+  /** Costo del despacho a esa comuna, en pesos. */
+  valor: number;
+}
+
+export interface LineaPedidoCliente extends LineaPedido {
+  precioUnitario: number;
+}
+
+/** Pedido tal como lo ve quien lo compró. GET /logistica/pedidos/mios (Cliente) */
+export interface PedidoCliente extends Omit<Pedido, 'lineas'> {
+  lineas: LineaPedidoCliente[];
+  flete: number;
+  /** Lo pagado: productos más flete. */
+  total: number;
+}

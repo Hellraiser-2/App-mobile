@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { hash, verify } from '@node-rs/argon2';
-import type { LoginRequest, RefreshRequest, Rol, SesionResponse, Usuario } from '@rockstar/contracts';
+import type { LoginRequest, RefreshRequest, RegistroRequest, Rol, SesionResponse, Usuario } from '@rockstar/contracts';
 
 import { DIAS_REFRESCO, TokensService } from '../auth/tokens.service.js';
-import { ErrorDeNegocio, cuerpoComo, sesionInvalida, texto } from '../comun/errores.js';
+import { ErrorDeNegocio, cuerpoComo, exigir, sesionInvalida, texto } from '../comun/errores.js';
 import { BaseDeDatos, type Ejecutor } from '../db/base-de-datos.js';
 
 interface FilaUsuario {
@@ -21,6 +21,9 @@ const SELECCION_USUARIO = `
   JOIN usuarios.roles r USING (id_rol)`;
 
 const credencialesInvalidas = () => new ErrorDeNegocio(401, 'CREDENCIALES_INVALIDAS', 'Correo o contraseña no válidos.');
+
+const FORMA_DE_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const LARGO_MINIMO_CONTRASENA = 8;
 
 @Injectable()
 export class AuthService {
@@ -44,6 +47,32 @@ export class AuthService {
       throw credencialesInvalidas();
     }
     return this.emitirSesion(this.db, cuenta);
+  }
+
+  /** Registro público: la cuenta creada siempre es de Cliente. Las del personal las crea el Gerente. */
+  async registrar(cuerpo: unknown): Promise<SesionResponse> {
+    const datos = cuerpoComo<RegistroRequest>(cuerpo);
+    const nombre = texto(datos.nombre);
+    const correo = texto(datos.email).toLowerCase();
+    const password = typeof datos.password === 'string' ? datos.password : '';
+    exigir(nombre !== '', 'El nombre es obligatorio.');
+    exigir(FORMA_DE_CORREO.test(correo), 'El correo no es válido.');
+    exigir(password.length >= LARGO_MINIMO_CONTRASENA, `La contraseña debe tener al menos ${LARGO_MINIMO_CONTRASENA} caracteres.`);
+
+    const hashContrasena = await hash(password);
+    return this.db.transaccion(async (tx) => {
+      const [creada] = await tx.consultar<{ id: number }>(
+        `INSERT INTO usuarios.usuarios (nombre, email, hash_contrasena, id_rol)
+         VALUES ($1, $2, $3, (SELECT id_rol FROM usuarios.roles WHERE nombre = 'CLIENTE'))
+         ON CONFLICT (email) DO NOTHING RETURNING id_usuario AS id`,
+        [nombre, correo, hashContrasena],
+      );
+      if (!creada) {
+        throw new ErrorDeNegocio(409, 'EMAIL_EN_USO', 'Ya existe una cuenta con ese correo.');
+      }
+      const [cuenta] = await tx.consultar<FilaUsuario>(`${SELECCION_USUARIO} WHERE u.id_usuario = $1`, [creada.id]);
+      return this.emitirSesion(tx, cuenta!);
+    });
   }
 
   /** Cambia un token de refresco vigente por una sesión nueva. El token usado deja de servir. */

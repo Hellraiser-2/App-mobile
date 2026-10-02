@@ -334,6 +334,10 @@ export class BackendSimulado {
     if (cierre) {
       return this.cerrarBusqueda(Number(cierre[1]), cuerpo as CierreBusquedaRequest);
     }
+    const despacho = /^POST \/logistica\/pedidos\/(\d+)\/despacho$/.exec(ruta);
+    if (despacho) {
+      return this.generarDespacho(Number(despacho[1]), usuario);
+    }
     switch (ruta) {
       case 'GET /inventario/bandas':
         return this.listar(this.bandas);
@@ -708,6 +712,51 @@ export class BackendSimulado {
 
   private listarPedidos(estado: string | null): Pedido[] {
     return this.pedidos.filter((pedido) => !estado || pedido.estado === estado).map((pedido) => ({ ...pedido }));
+  }
+
+  /**
+   * Deja el pedido despachado con su código de seguimiento y saca sus prendas del stock,
+   * primero de la bodega. Un pedido que ya tiene despacho se responde tal como está.
+   */
+  private generarDespacho(idPedido: number, usuario: Usuario): Pedido {
+    const pedido = this.pedidos.find((p) => p.idPedido === idPedido);
+    if (!pedido) {
+      throw new ErrorSimulado(404, 'NO_ENCONTRADO', 'El pedido no existe.');
+    }
+    if (pedido.estado !== 'DESPACHADO' && pedido.estado !== 'ENTREGADO') {
+      const lineas = pedido.lineas.map((linea) => ({
+        variante: this.variantes.find((v) => v.idVariante === linea.idVariante)!,
+        cantidad: linea.cantidad,
+      }));
+      // Se valida todo antes de aplicar nada. Las unidades del pedido están entre las reservadas.
+      for (const { variante } of lineas) {
+        if (this.total(variante) < variante.reservado) {
+          throw new ErrorSimulado(409, 'STOCK_INSUFICIENTE', `No hay existencia suficiente de ${variante.sku} para despachar el pedido.`);
+        }
+      }
+      for (const { variante, cantidad } of lineas) {
+        variante.reservado -= cantidad;
+        let pendiente = cantidad;
+        for (const ubicacion of UBICACIONES) {
+          const unidades = Math.min(pendiente, variante.existencias[ubicacion]);
+          if (unidades > 0) {
+            variante.existencias[ubicacion] -= unidades;
+            this.registrar(usuario, {
+              idVariante: variante.idVariante,
+              tipo: 'DESPACHO',
+              ubicacion,
+              cantidad: unidades,
+              motivo: `Despacho del pedido #${idPedido}`,
+            });
+            pendiente -= unidades;
+          }
+        }
+      }
+      pedido.estado = 'DESPACHADO';
+      pedido.despachadoEn = new Date().toISOString();
+      pedido.trackingStarken = `STK-${900_000 + idPedido}`;
+    }
+    return { ...pedido };
   }
 
   // --- Tiempo de búsqueda ---

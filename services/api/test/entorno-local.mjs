@@ -46,7 +46,7 @@ async function esperarSalud(url, proceso) {
 
 /**
  * @param {{ puertoApi?: number, silencioso?: boolean }} [opciones]
- * @returns {Promise<{ apiUrl: string, detener: () => Promise<void> }>}
+ * @returns {Promise<{ apiUrl: string, db: PGlite, detener: () => Promise<void> }>}
  */
 export async function iniciarEntornoLocal({ puertoApi, silencioso = false } = {}) {
   const db = await PGlite.create();
@@ -87,7 +87,8 @@ export async function iniciarEntornoLocal({ puertoApi, silencioso = false } = {}
     await detener();
     throw error;
   }
-  return { apiUrl, detener };
+  // La base se entrega para que una prueba pueda preparar o revisar datos que la API no expone.
+  return { apiUrl, db, detener };
 }
 
 // Ejecutado directamente: deja la API arriba hasta Ctrl+C.

@@ -24,3 +24,20 @@ export interface SesionResponse {
 export interface RefreshRequest {
   refreshToken: string;
 }
+
+/**
+ * POST /usuarios/auth/registro (público)
+ *
+ * Crea una cuenta de Cliente y responde su sesión ya iniciada. La contraseña debe tener
+ * al menos 8 caracteres. Un correo ya registrado responde `409 EMAIL_EN_USO`.
+ */
+export interface RegistroRequest {
+  nombre: string;
+  email: string;
+  password: string;
+}
+
+/** Cuenta del personal. GET /usuarios/internos (Gerente, RRHH) */
+export interface CuentaInterna extends Usuario {
+  activo: boolean;
+}

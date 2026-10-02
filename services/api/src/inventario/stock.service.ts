@@ -22,6 +22,8 @@ export interface MovimientoNuevo {
   ubicacionDestino?: Ubicacion;
   cantidad: number;
   motivo: string;
+  /** Venta que origina el movimiento, en una salida por venta o por despacho. */
+  idVenta?: number;
 }
 
 const UBICACION_DE_ID = new Map(Object.entries(ID_UBICACION).map(([nombre, id]) => [id, nombre as Ubicacion]));
@@ -87,8 +89,14 @@ export class StockService {
   /**
    * Verifica que las variantes existan y estén activas, y bloquea sus existencias hasta
    * el fin de la transacción. Devuelve el saldo de cada una, leído ya con el bloqueo.
+   * `admitirInactivas` es para lo ya vendido: una prenda desactivada después de la
+   * venta igual tiene que poder salir.
    */
-  async bloquear(tx: Ejecutor, idsVariante: readonly unknown[]): Promise<Map<number, Saldo>> {
+  async bloquear(
+    tx: Ejecutor,
+    idsVariante: readonly unknown[],
+    { admitirInactivas = false }: { admitirInactivas?: boolean } = {},
+  ): Promise<Map<number, Saldo>> {
     const ids = [...new Set(idsVariante)];
     if (!ids.every((id): id is number => Number.isInteger(id))) {
       throw noEncontrado('La variante no existe.');
@@ -105,7 +113,7 @@ export class StockService {
       if (!variante) {
         throw noEncontrado('La variante no existe.');
       }
-      if (!variante.activo) {
+      if (!variante.activo && !admitirInactivas) {
         throw new ErrorDeNegocio(409, 'VARIANTE_INACTIVA', 'El producto está desactivado.');
       }
     }
@@ -148,14 +156,16 @@ export class StockService {
     );
   }
 
-  async registrar(tx: Ejecutor, clave: string, usuario: Usuario, movimiento: MovimientoNuevo): Promise<void> {
+  /** `clave` es la de la operación idempotente que origina el movimiento; `null` si no nace de una. */
+  async registrar(tx: Ejecutor, clave: string | null, usuario: Usuario, movimiento: MovimientoNuevo): Promise<void> {
     await tx.consultar(
       `INSERT INTO inventario.movimientos
-         (id_variante, id_ubicacion, id_ubicacion_destino, id_tipo, id_tipo_merma, cantidad, id_usuario, motivo, clave_idempotencia)
+         (id_variante, id_ubicacion, id_ubicacion_destino, id_tipo, id_tipo_merma, cantidad, id_usuario, motivo,
+          clave_idempotencia, id_venta)
        VALUES ($1, $2, $3,
                (SELECT id_tipo FROM inventario.tipos_movimiento WHERE codigo = $4),
                (SELECT id_tipo_merma FROM inventario.tipos_merma WHERE codigo = $5),
-               $6, $7, $8, $9)`,
+               $6, $7, $8, $9, $10)`,
       [
         movimiento.idVariante,
         ID_UBICACION[movimiento.ubicacion],
@@ -166,6 +176,7 @@ export class StockService {
         usuario.id,
         movimiento.motivo,
         clave,
+        movimiento.idVenta ?? null,
       ],
     );
   }

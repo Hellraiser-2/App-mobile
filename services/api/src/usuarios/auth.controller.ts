@@ -10,6 +10,12 @@ import { AuthService } from './auth.service.js';
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
+  /** Crea una cuenta de Cliente y la deja con la sesión iniciada. */
+  @Post('registro')
+  registrar(@Body() cuerpo: unknown): Promise<SesionResponse> {
+    return this.auth.registrar(cuerpo);
+  }
+
   @Post('login')
   @HttpCode(200)
   iniciar(@Body() cuerpo: unknown): Promise<SesionResponse> {

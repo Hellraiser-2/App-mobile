@@ -9,12 +9,14 @@ export class ErrorDeNegocio extends Error {
     readonly status: number,
     readonly codigo: CodigoError,
     mensaje: string,
+    /** Datos con que el cliente puede corregir la solicitud, por ejemplo qué líneas no tienen stock. */
+    readonly detalle?: unknown,
   ) {
     super(mensaje);
   }
 
   cuerpo(): ErrorApi {
-    return { codigo: this.codigo, mensaje: this.message };
+    return { codigo: this.codigo, mensaje: this.message, ...(this.detalle === undefined ? {} : { detalle: this.detalle }) };
   }
 }
 

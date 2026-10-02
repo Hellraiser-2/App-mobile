@@ -6,19 +6,21 @@ import { TokensService } from './auth/tokens.service.js';
 import { FiltroDeErrores } from './comun/filtro-errores.js';
 import { DbModule } from './db/db.module.js';
 import { InventarioModule } from './inventario/inventario.module.js';
-import { PedidosController } from './logistica/pedidos.controller.js';
+import { LogisticaModule } from './logistica/logistica.module.js';
 import { SaludController } from './salud.controller.js';
 import { AuthController } from './usuarios/auth.controller.js';
 import { AuthService } from './usuarios/auth.service.js';
+import { CuentasController } from './usuarios/cuentas.controller.js';
+import { VentasModule } from './ventas/ventas.module.js';
 
 /**
- * Un solo servicio con los dominios de Usuarios, Inventario y Logística como módulos.
+ * Un solo servicio con los dominios de Usuarios, Inventario, Logística, Ventas y Pagos como módulos.
  * Publica las mismas rutas `/api/v1/<dominio>/...` que el diseño reparte entre el
  * gateway y los servicios, de modo que separarlos después no cambia a los clientes.
  */
 @Module({
-  imports: [DbModule, InventarioModule],
-  controllers: [AuthController, PedidosController, SaludController],
+  imports: [DbModule, InventarioModule, LogisticaModule, VentasModule],
+  controllers: [AuthController, CuentasController, SaludController],
   providers: [
     AuthService,
     TokensService,

@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import type { ProductoNuevoRequest, Usuario, VarianteStock } from '@rockstar/contracts';
+import type { ProductoEdicionRequest, ProductoNuevoRequest, Usuario, VarianteGestion, VarianteStock } from '@rockstar/contracts';
 
-import { ErrorDeNegocio, cuerpoComo, esEnteroPositivo, exigir, texto } from '../comun/errores.js';
+import { ErrorDeNegocio, cuerpoComo, esEnteroPositivo, exigir, noEncontrado, texto } from '../comun/errores.js';
 import { claveDe } from '../comun/texto.js';
-import type { Ejecutor } from '../db/base-de-datos.js';
+import { BaseDeDatos, type Ejecutor } from '../db/base-de-datos.js';
 import { CatalogosService } from './catalogos.service.js';
+import { variantesDeGestion } from './consultas.js';
 import { StockService } from './stock.service.js';
 import { codigoDeUbicacion, codigosDeVariante, esUbicacion } from './ubicaciones.js';
 
@@ -17,9 +18,40 @@ interface ProductoExistente {
 @Injectable()
 export class ProductosService {
   constructor(
+    private readonly db: BaseDeDatos,
     private readonly catalogos: CatalogosService,
     private readonly stock: StockService,
   ) {}
+
+  /**
+   * Cambia el precio o la descripción de un producto; solo los campos que vienen en el
+   * cuerpo. Sin precio, el producto deja de ofrecerse en la tienda web.
+   */
+  async editar(idProducto: number, cuerpo: unknown): Promise<VarianteGestion[]> {
+    const datos = cuerpoComo<ProductoEdicionRequest>(cuerpo);
+    const valores: unknown[] = [idProducto];
+    const cambios: string[] = [];
+    if (datos.precio !== undefined) {
+      exigir(datos.precio === null || esEnteroPositivo(datos.precio), 'El precio debe ser un entero mayor que cero.');
+      valores.push(datos.precio);
+      cambios.push(`precio = $${valores.length}`);
+    }
+    if (datos.descripcion !== undefined) {
+      exigir(datos.descripcion === null || typeof datos.descripcion === 'string', 'La descripción no es válida.');
+      valores.push(texto(datos.descripcion) || null);
+      cambios.push(`descripcion = $${valores.length}`);
+    }
+    exigir(cambios.length > 0, 'No hay cambios que aplicar.');
+
+    const [producto] = await this.db.consultar(
+      `UPDATE inventario.productos SET ${cambios.join(', ')} WHERE id_producto = $1 RETURNING id_producto`,
+      valores,
+    );
+    if (!producto) {
+      throw noEncontrado('El producto no existe.');
+    }
+    return variantesDeGestion(this.db, 'WHERE p.id_producto = $1', [idProducto]);
+  }
 
   crear(cuerpo: unknown, usuario: Usuario): Promise<VarianteStock> {
     const datos = cuerpoComo<ProductoNuevoRequest>(cuerpo);
